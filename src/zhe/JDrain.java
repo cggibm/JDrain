@@ -87,7 +87,7 @@ public class JDrain extends JFrame {
 	private static String SEPARATR = "/";
 	private static String CODELOC  = "/home/gem/scripts/";
 	//DBGprivate static String CODELOC  = "C:\\";
-	private static String TESTSTAT = CODELOC + "claimedWU/teststat";
+	private static String TESTSTAT = "claimedWU" + SEPARATR + "teststat";
 	private static String INTROFILE= "0.PNG";
 
 	/** XML file variables */
@@ -715,8 +715,9 @@ public class JDrain extends JFrame {
 		String[] aszTmp;
 		BufferedReader in = null;
 		try {
-			in = new BufferedReader(new FileReader(TESTSTAT));
-			String szTmp;
+			String szTmp = System.getProperty("user.dir") + SEPARATR + TESTSTAT;
+			in = new BufferedReader(new FileReader(szTmp));
+			//String szTmp;
 			while ((szTmp = in.readLine()) != null) {
 				//all text are based on script
 				if (szTmp.contains("(TSYNM ") || szTmp.contains("(ORDRNUM ") || szTmp.contains("(SN ") ||
@@ -949,7 +950,7 @@ public class JDrain extends JFrame {
 		ActionListener submit = new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				//process serial or order no.
-				String szWorkUnitNo = textFieldWorkUnit.getText();
+				String szWorkUnitNo = textFieldWorkUnit.getText().toUpperCase().trim();
 				textFieldWorkUnit.setText(szWorkUnitNo);
 				if ((szWorkUnitNo.length() != MINWORKUNITLEN) || szWorkUnitNo.matches("[^a-zA-Z0-9]")) {
 					JLogHandler.displayErrPopUpMessage("Please enter a valid work unit number");	
