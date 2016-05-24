@@ -16,14 +16,14 @@ public class JScript {
 	 *  Input:  szCmd - command to run
 	 *  Output: 0 if pass; other if otherwise
 	 */
-    public static int run(String szCmd) throws IOException, InterruptedException {
-    	JLogHandler.printDbg("Running command: " + szCmd);
+    public static int run(String szCmd, JLogHandler logHandlr) throws IOException, InterruptedException {
+    	logHandlr.printDbg("Running command: " + szCmd);
     	Runtime rt = Runtime.getRuntime();
     	Process proc = rt.exec(szCmd);
 
         //remove any output/error message
-    	JStreamGobbler errorGobbler = new JStreamGobbler(proc.getErrorStream(), "ERROR");
-    	JStreamGobbler outputGobbler = new JStreamGobbler(proc.getInputStream(), "OUTPUT");
+    	JStreamGobbler errorGobbler = new JStreamGobbler(proc.getErrorStream(), "ERROR", logHandlr);
+    	JStreamGobbler outputGobbler = new JStreamGobbler(proc.getInputStream(), "OUTPUT", logHandlr);
         errorGobbler.start();
         errorGobbler.join();
         outputGobbler.start();
@@ -39,20 +39,22 @@ class JStreamGobbler extends Thread {
 	/** Constants */
 
 	/** Global variables */
-	InputStream is;
-    String szLogType;
-    OutputStream os;
+	private InputStream is;
+    private String szLogType;
+    private OutputStream os;
+    private JLogHandler logHandlr;
 
     /** JStreamGobbler constructor */
-    JStreamGobbler(InputStream is, String szType) {
-        this(is, szType, null);
+    JStreamGobbler(InputStream is, String szType, JLogHandler log) {
+        this(is, szType, null, log);
     } /** JStreamGobbler - END */
 
     /** JStreamGobbler constructor */
-    private JStreamGobbler(InputStream is, String szType, OutputStream redirect) {
+    private JStreamGobbler(InputStream is, String szType, OutputStream redirect, JLogHandler log) {
         this.is = is;
         this.szLogType = szType;
         this.os = redirect;
+        this.logHandlr = log;
     } /** JStreamGobbler - END */
 
     /** Starts thread */
@@ -69,9 +71,9 @@ class JStreamGobbler extends Thread {
                 if (pw != null)
                     pw.println(line);
                 if (szLogType.contains("ERROR")) {
-                	JLogHandler.printErr(line);
+                	logHandlr.printErr(line);
                 } else {
-                	JLogHandler.printInfo(line);
+                	logHandlr.printInfo(line);
                 }  
             }
             if (pw != null)

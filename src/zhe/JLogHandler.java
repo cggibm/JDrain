@@ -12,26 +12,37 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import javax.swing.JOptionPane;
+import javax.swing.JTextPane;
+import javax.swing.text.StyledDocument;
 
 /*** JLogHandler - performs logging on command line
  **/
-class JLogHandler extends JDrain {
+class JLogHandler {
 	//error types
-	public final static int ERROR = -1;
-	public final static int EXERR = -2;
-	public final static int PASS  =  0;
+	public final int ERROR = -1;
+	public final int EXERR = -2;
+	public final int PASS  =  0;
 
 	private final static DateFormat DF = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 	private final static int DBGON = 0;
-	private final static String szFile = getLogFile();
+
+	//global variables
+	private static String szFile;
+	private static JTextPane textPane;
 
 	/** JLogHandler constructor */
-	public JLogHandler(String szLogFile, Object obj) {
-		//TODO
-	}
+	public JLogHandler(String szLogFile) {
+		szFile = szLogFile;
+		textPane = null;
+	} /** JLogHandler - END */
+
+	/** JLogHandler constructor */
+	public void setTextPane(JTextPane obj) {
+		textPane = obj;
+	} /** JLogHandler - END */
 
 	/** Display info popup message */
-	public static int displayInfoPopUpMessage(String szMessage) {
+	public synchronized int displayInfoPopUpMessage(String szMessage) {
 		//JOptionPane.showMessageDialog(null, szMessage);
 		return JOptionPane.showConfirmDialog(null,
 				szMessage, "Info",
@@ -40,19 +51,19 @@ class JLogHandler extends JDrain {
 	} /** displayInfoPopUpMessage - END */
 
 	/** Display error popup message */
-	public static void displayErrPopUpMessage(String szMessage) {
+	public synchronized void displayErrPopUpMessage(String szMessage) {
 		JOptionPane.showMessageDialog(null, szMessage, "Error", JOptionPane.ERROR_MESSAGE);
 	} /** displayErrPopUpMessage - END */
 
 	/** Display popup confirm message */
-	public static int displayConfirmMessage(String szMessage) {
+	public synchronized int displayConfirmMessage(String szMessage) {
 		return JOptionPane.showConfirmDialog(null, szMessage, "Confirm Message",  JOptionPane.YES_NO_OPTION); 
 	} /** displayConfirmMessage - END */
 
 	/** Prints console error message
 	 *  Input:  szMessage - message to print
 	 */
-    public static void printInfo(String szMessage) {
+    public synchronized void printInfo(String szMessage) {
     	printAndDisplay(DF.format(new Date()) + " (INFO)    " + szMessage);
     } /** printInfo - END */
 
@@ -60,7 +71,7 @@ class JLogHandler extends JDrain {
 	 *  Input:  szMessage - error message to print
 	 *  Output: error code
 	 */
-    public static int printErr(String szMessage) {
+    public synchronized int printErr(String szMessage) {
     	printAndDisplay(DF.format(new Date()) + " (ERROR)    " + szMessage);
     	return ERROR;
     } /** printErr - END */
@@ -70,7 +81,7 @@ class JLogHandler extends JDrain {
 	 *         ex        - exception info
 	 *  Output: error code
 	 */
-    public static int printErr(String szMessage, Exception ex) {
+    public synchronized int printErr(String szMessage, Exception ex) {
     	printAndDisplay(DF.format(new Date()) + " (EXERR)    " + szMessage);
    		ex.printStackTrace();
    		return EXERR;
@@ -80,7 +91,7 @@ class JLogHandler extends JDrain {
 	 *  Input: szMessage - message to print
 	 */
     @SuppressWarnings("unused")
-	public static void printDbg(String szMessage) {
+	public synchronized void printDbg(String szMessage) {
     	if (DBGON > 0) {
     		printAndDisplay(DF.format(new Date()) + " (DEBUG)    " + szMessage);
     	}
@@ -91,7 +102,7 @@ class JLogHandler extends JDrain {
 	 *  Output: true  - all files are closed
 	 *          false - one or more files are closed
 	 */
-	private static boolean isFileLocked(File file) {
+	private synchronized static boolean isFileLocked(File file) {
 		boolean bIsLocked = false; //return false f file does not exist
 		if (file.exists() && !file.renameTo(file)) {
 			bIsLocked = true;
@@ -99,19 +110,39 @@ class JLogHandler extends JDrain {
 		return bIsLocked; 
 	} /** isFileLocked - END */
 
+    /** Display logs to GUI
+     *  Input: szMsg - message to display
+     **/
+	private synchronized static void displayTxtPaneTxt(String szMsg) {
+		if (textPane != null) {
+			try {
+				StyledDocument document = (StyledDocument)textPane.getDocument();
+				document.insertString(document.getLength(), szMsg + "\n", null);
+				textPane.setCaretPosition(0);	
+			} catch (Exception ex) {
+				JTextPane tmpPane = textPane;
+				textPane = null;
+				printAndDisplay("Error in displaying message to text pane.");
+				ex.printStackTrace();
+				textPane = tmpPane;
+			}
+		}
+	} /** displayTxtPaneTxt - END */
+
     /** Display and writes logs to file
      *  Input: szMsg - message to write and display
      **/
-    private static void printAndDisplay(String szMsg) {
+    private synchronized static void printAndDisplay(String szMsg) {
     	System.out.println(szMsg);
+    	displayTxtPaneTxt(szMsg);
 
     	File file = new File(szFile);
     	if (!file.exists()) {
     		try {
 				file.createNewFile();
-			} catch (IOException e) {
+			} catch (IOException ex) {
 				System.out.println("Exception encountered while creating " + szFile);
-				e.printStackTrace();
+				ex.printStackTrace();
 			}
     	}
 
@@ -127,9 +158,9 @@ class JLogHandler extends JDrain {
 			writer = new FileWriter(file, true);
 			writer.write(szMsg + "\n");
 			writer.close();
-		} catch (IOException e) {
+		} catch (IOException ex) {
 			System.out.println("Exception encountered while writing on " + szFile);
-			e.printStackTrace();
+			ex.printStackTrace();
 		}
 		writer = null;
     } /** printAndDisplay - END */
