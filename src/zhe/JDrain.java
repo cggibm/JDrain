@@ -1132,6 +1132,7 @@ public class JDrain extends JFrame {
 
 		ActionListener submit = new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
+				tabbedPane.setSelectedIndex(0);
 				tstLogs.printInfo("=========== PROCESS START ===========");
 
 				//check if all fields are filled up
