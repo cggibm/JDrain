@@ -4,6 +4,7 @@
 
 package zhe;
 
+import java.awt.Color;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -13,6 +14,8 @@ import java.util.Date;
 
 import javax.swing.JOptionPane;
 import javax.swing.JTextPane;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
 /*** JLogHandler - performs logging on command line
@@ -117,8 +120,15 @@ class JLogHandler {
 		if (textPane != null) {
 			try {
 				StyledDocument document = (StyledDocument)textPane.getDocument();
-				document.insertString(document.getLength(), szMsg + "\n", null);
-				textPane.setCaretPosition(0);	
+				Style style = textPane.addStyle(null, null);
+				if (szMsg.contains("ERROR")) {
+					StyleConstants.setForeground(style, Color.red);
+				} else {
+					StyleConstants.setForeground(style, Color.black);
+				}
+				document.insertString(document.getLength(), szMsg + "\n", style);
+				StyleConstants.setForeground(style, Color.black);
+				//CGGtextPane.setCaretPosition(0);	
 			} catch (Exception ex) {
 				JTextPane tmpPane = textPane;
 				textPane = null;

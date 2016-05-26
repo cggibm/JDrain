@@ -7,11 +7,13 @@ package zhe;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -77,11 +79,14 @@ public class JDrain extends JFrame {
 	private static Font BOLD = new Font("Tahoma", Font.BOLD, 11);
 	private static boolean CLAIMEDIN = true;
 	private static boolean ISHYBRID  = true;
+	private static int MINMODELLEN  = 3;
+	private static int MINMFGNLEN   = 7;
+	private static int MINPRODLNLEN = 7;
 
 	/** Command list */
 	private static String DEFAULTUSER = "reefuser";
 	private static String DEFAULTSRVR = "sgad06e0";
-	private static String DEFAULTPC   = "drain01";
+	//private static String DEFAULTPC   = "drain01";
 	private static String DRAINCMD	= "/bin/bash /home/gem/scripts/drainHE.sh " + DEFAULTUSER + " " + DEFAULTSRVR;
 	private static String LOGINCMD	= " val_user";
 	private static String CLAIMINCMD  = " claim_in";
@@ -95,7 +100,7 @@ public class JDrain extends JFrame {
 	private static String SEPARATR = "\\"; //CGG
 	//private static String CODELOC  = "/home/gem/scripts/";
 	private static String CODELOC  = "C:\\";
-	private static String TESTSTAT = CODELOC + "claimedWU/teststat";
+	private static String TESTSTAT = "claimedWU\\teststat";//CGG
 	private static String INTROFILE= "0.PNG";
 
 	/** XML file variables */
@@ -131,6 +136,8 @@ public class JDrain extends JFrame {
 					frame.addWindowListener(new WindowAdapter() {
 						public void windowClosing(WindowEvent e) {
 		   					if (bIsClaimedIn) {
+		   						JOptionPane.showMessageDialog(null, "System will be suspended.",
+		   								"Error", JOptionPane.DEFAULT_OPTION);
 		   						performSuspend(); //if claimed-in, do a suspend
 		   						frame.dispose();
 		   					}
@@ -173,14 +180,6 @@ public class JDrain extends JFrame {
 		bIsClaimedIn = !CLAIMEDIN;
 		bIsHybrid = !ISHYBRID;
 
-		//set the host name
-		//szHostName = System.getenv("HOSTNAME");
-		//if (szHostName.isEmpty()) {
-		//	szHostName = DEFAULTPC;
-		//} else {
-		//	szHostName = szHostName.replaceAll(".sg.ibm.com", "");
-		//}
-
 		createMenuBar();
 		//createLoginPanel();
 		createDrainPanel();
@@ -203,20 +202,53 @@ public class JDrain extends JFrame {
 		return bRet;
 	} /** isValidOS - END */
 
+	/** Runs command
+	 *  Input : szCmd - command to run
+	 *  Output: error code - if error is encountered
+	 *		    0 - pass
+	 */
+	private static int runScript(String szCmd) {
+		int iRet = tstLogs.PASS;
+		try {
+			iRet = JScript.run(szCmd, tstLogs);
+			switch (iRet) {
+			case 11:
+				tstLogs.printErr("MFS: Workunit is NOT valid or is NOT in the correct OP 0807.");
+				break;
+			case 12:
+				tstLogs.printErr("Duluth Testcell: Retry or Ask SGP TE to cleanup MFS testcell in Duluth.");
+				break;
+			case 13:
+				tstLogs.printErr("Duluth Testcell: Fail to copy file from cellproto. Please retry.");
+				break;
+			case 14:
+				tstLogs.printErr("MFS: Fail to login, check user authority or OP authority.");
+				break;
+			case 15:
+				tstLogs.printErr("Duluth Testcell: Fail to setstat. Please retry.");
+				break;
+			case 16:
+				tstLogs.printErr("MFS: Workunit is not A frame workunit.");
+				break;
+			default:
+				break;
+			}
+		} catch (IOException | InterruptedException ex) {
+			iRet = tstLogs.printErr("Exception encountered while running command.", ex);
+		}
+		return iRet;
+	} /** runScript - END */
+
 	/** Perform login
 	 *  Output: error code - if error is encountered
-	 *		  0 - pass
+	 *		    0 - pass
 	 */
 	private int performLogin() {
 		//call script to login
-		try {
-			if (JScript.run(DRAINCMD + " " + szHostName + LOGINCMD, tstLogs) != 0) {
-				return tstLogs.printErr("Loggin in failed");
-			}
-		} catch (IOException | InterruptedException ex) {
-			return tstLogs.printErr("Exception encountred while logging in", ex);
+		tstLogs.printInfo("Logging IN.");
+		if (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + LOGINCMD) != 0) {
+			return tstLogs.printErr("Logging in failed");
 		}
-
 		return tstLogs.PASS;
 	} /** performLogin - END */
 
@@ -228,14 +260,9 @@ public class JDrain extends JFrame {
 	private int performClaimIn(String szWorkUnit) {
 		tstLogs.printInfo("Performing MFS Claim-IN for WU " + szWorkUnit);
 		//call script to claim-in
-		/*CGGtry {
-			if (JScript.run(DRAINCMD + " " + szHostName + CLAIMINCMD + " " + szWorkUnit, tstLogs) != 0) {
-				return tstLogs.printErr("Claim in for WU " + szWorkUnit + " failed");
-			}
-		} catch (IOException | InterruptedException ex) {
-			return tstLogs.printErr("Exception encountred while claiming in", ex);
+		/*CGGif (runScript(DRAINCMD + " " + szHostName + CLAIMINCMD + " " + szWorkUnit) != 0) {
+			return tstLogs.printErr("Claim IN failed");
 		}*/
-
 		tstLogs.printInfo("Claim IN Successful.");
 		bIsClaimedIn = CLAIMEDIN;
 		if (bIsHybrid) {
@@ -249,12 +276,8 @@ public class JDrain extends JFrame {
 		if (bIsClaimedIn) {
 			tstLogs.printInfo("Performing MFS Claim-OUT for WU " + textFieldWorkUnit.getText());
 			//call script to claim-out
-			/*CGGtry {
-				if (JScript.run(DRAINCMD + " " + szHostName + CLAIMOUTCMD, tstLogs) != 0) {
-					return tstLogs.printErr("Claim out failed");
-				}
-			} catch (IOException | InterruptedException ex) {
-				return tstLogs.printErr("Exception encountred while claiming out", ex);
+			/*CGGif (runScript(DRAINCMD + " " + szHostName + CLAIMOUTCMD) != 0) {
+				return tstLogs.printErr("Claim OUT failed");
 			}*/
 
 			tstLogs.printInfo("Claim OUT Successful.");
@@ -271,12 +294,8 @@ public class JDrain extends JFrame {
 
 			tstLogs.printInfo("Performing MFS suspend for WU " + textFieldWorkUnit.getText());
 			//call script to suspend
-			/*CGGtry {
-				if (JScript.run(DRAINCMD + " " + szHostName + SUSPEND, tstLogs) != 0) {
-					return tstLogs.printErr("Suspend failed");
-				}
-			} catch (IOException | InterruptedException ex) {
-				return tstLogs.printErr("Exception encountred while doing suspend", ex);
+			/*CGGif (runScript(DRAINCMD + " " + szHostName + SUSPEND) != 0) {
+				return tstLogs.printErr("Suspend failed");
 			}*/
 
 			tstLogs.printInfo("Process suspended.");
@@ -289,15 +308,12 @@ public class JDrain extends JFrame {
 	/** Perform step start */
 	private int performStepStart() {
 		//call script to step start
-		//try {
-			String szStepName = "N" + tstCtl.getCurrentNodeCnt() + "S" + tstCtl.getOpCnt();
-			tstLogs.printInfo("Performing Step Start " + szStepName);
-			/*CGGif ((bIsClaimedIn) && (JScript.run(DRAINCMD + " " + szHostName + STEPSTART + " " + szStepName + " " + szStepName, tstLogs) != 0)) {
-				return tstLogs.printErr("Step start failed");
-			}*/
-		//} catch (IOException | InterruptedException ex) {
-		//	return tstLogs.printErr("Exception encountred while doing step start", ex);
-		//}
+		String szStepName = "N" + tstCtl.getCurrentNodeCnt() + "S" + tstCtl.getOpCnt();
+		tstLogs.printInfo("Performing Step Start " + szStepName);
+		
+		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + szHostName + STEPSTART + " " + szStepName + " " + szStepName) != 0)) {
+			return tstLogs.printErr("Step start failed");
+		}*/
 		return tstLogs.PASS;
 	} /** performStepStart - END */
 
@@ -305,12 +321,8 @@ public class JDrain extends JFrame {
 	private static int performStepEnd() {
 		tstLogs.printInfo("Performing Step End");
 		//call script to step end
-		/*CGGtry {
-			if ((bIsClaimedIn) && (JScript.run(DRAINCMD + " " + szHostName + STEPEND, tstLogs) != 0)) {
-				return tstLogs.printErr("Step End failed");
-			}
-		} catch (IOException | InterruptedException ex) {
-			return tstLogs.printErr("Exception encountred while doing step end", ex);
+		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + szHostName + STEPEND) != 0)) {
+			return tstLogs.printErr("Step End failed");
 		}*/
 		return tstLogs.PASS;
 	} /** performStepEnd - END */
@@ -322,15 +334,50 @@ public class JDrain extends JFrame {
 		String szTrimmedData = szData.replaceAll("\\s","");
 		tstLogs.printInfo("Performing Step Data " + szTrimmedData);
 		//call script to step data
-		/*CGGtry {
-			if ((bIsClaimedIn) && (JScript.run(DRAINCMD + " " + szHostName + STEPDATA + " " + szTrimmedData, tstLogs) != 0)) {
-				return tstLogs.printErr("Step Data failed");
-			}
-		} catch (IOException | InterruptedException ex) {
-			return tstLogs.printErr("Exception encountred while doing step data " + szData, ex);
+		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + szHostName + STEPDATA + " " + szTrimmedData) != 0)) {
+			return tstLogs.printErr("Step Data failed");
 		}*/
 		return tstLogs.PASS;
 	} /** performStepData - END */
+
+	/** Find text being searched in text pane
+	 *  Input: textPaneToFind - textpane that contains string to be searched
+	 *  	   textField      - contains the search word
+	 *         btnNext        - button used to find the next instance of the search word in the given text pane
+	 */
+	private void findSearchWord(JTextPane textPaneToFind, JTextField textField, JButton btnNext) {
+		int iPos = textPaneToFind.getCaretPosition();
+		textPaneToFind.setCaretPosition(iPos);
+		btnNext.setVisible(false);
+
+		String szStrToFind = textField.getText().trim();
+		if ((szStrToFind != null) && (szStrToFind.length() > 0)) {
+			textPaneToFind.requestFocusInWindow();
+			javax.swing.text.Document doc = textPaneToFind.getDocument();
+			int iStrFindLen = szStrToFind.length();
+
+			try {
+				String szTextPaneContents = doc.getText(0, doc.getLength());
+				Rectangle viewRect;
+			   	if ( ((iPos = szTextPaneContents.toUpperCase().indexOf(szStrToFind.toUpperCase(), iPos)) >= 0) ||
+			   		 ((iPos = szTextPaneContents.toUpperCase().indexOf(szStrToFind.toUpperCase(), 0   )) >= 0) ) {
+                    //get the rectangle of the where the text would be visible...
+                    viewRect = textPaneToFind.modelToView(iPos);
+                    //scroll to make the rectangle visible
+                    textPaneToFind.scrollRectToVisible(viewRect);
+                    //highlight the text
+                    textPaneToFind.setCaretPosition(iPos);
+                    textPaneToFind.moveCaretPosition(iPos + iStrFindLen);
+                    //enable next button
+                    btnNext.setVisible(true);
+			   	} //if - END
+			} catch (Exception ex) {
+				tstLogs.printErr("Exception encountered while searching text", ex);
+			}
+		} else {
+			tstLogs.displayErrPopUpMessage("Please enter search string");
+		}
+	} /** findSearchWord - END */
 
 	/** Initializes test cases
 	 *  Output: error code - if error is encountered
@@ -472,8 +519,8 @@ public class JDrain extends JFrame {
 		lblTstNum.setFont(TSTLBL);
 		panelImg.add(new JLabel(icon), gbc);
 		panelImg.add(lblTstNum);
-		panelImg.validate();
-		panelImg.repaint();
+		//panelImg.validate();
+		//panelImg.repaint();
 		pack();
 	} /** displayImg - END */
 
@@ -520,6 +567,7 @@ public class JDrain extends JFrame {
 				if (tstLogs.displayConfirmMessage("Are you sure you want to exit?") == JOptionPane.YES_OPTION) {
 					if (bIsClaimedIn) {
 						//if claimed-in, do a suspend
+						displayTxt("Performing Suspend.");
 						if (performSuspend() != tstLogs.PASS) {
 							tstLogs.displayErrPopUpMessage("Failed to perform suspend.");
 						}
@@ -719,6 +767,7 @@ public class JDrain extends JFrame {
 			public void actionPerformed(ActionEvent arg0) {
 				if (tstLogs.displayConfirmMessage("Are you sure you want to abort?") == JOptionPane.YES_OPTION) {
 					if (bIsClaimedIn) {
+						displayTxt("Performing Suspend.");
 						if (performSuspend() != tstLogs.PASS) {
 							tstLogs.displayErrPopUpMessage("Failed to perform suspend.\nPlease inform ME team.");
 						}
@@ -739,11 +788,10 @@ public class JDrain extends JFrame {
 	 */
 	private int updateNodeCnt() {
 		String szProdLn = textFieldProd.getText();
-		if (getTestCaseDetails(TAGNODE, CODELOC + szProdLn, szProdLn) != tstLogs.PASS) {
+		if ((getTestCaseDetails(TAGNODE, CODELOC + szProdLn, szProdLn) != tstLogs.PASS) ||
+			(textFieldNodeCnt.getText().isEmpty())) {
+			performSuspend();
 			return tstLogs.printErr("Failed to get node count.");
-		}
-		if (textFieldNodeCnt.getText().isEmpty()) {
-			return tstLogs.ERROR;
 		}
 		return tstLogs.PASS;
 	} /** updateNodeCnt - END */
@@ -789,8 +837,10 @@ public class JDrain extends JFrame {
 			in.close();
 			in = null;
 		} catch (FileNotFoundException ex) {
+			performSuspend();
 			return tstLogs.printErr("File not found.", ex);
 		} catch (IOException ex) {
+			performSuspend();
 			return tstLogs.printErr("IOException while reading file.", ex);
 		}
 
@@ -799,6 +849,7 @@ public class JDrain extends JFrame {
 			textFieldSer.getText().isEmpty() ||
 			textFieldProd.getText().isEmpty() ||
 			textFieldModel.getText().isEmpty()) {
+			performSuspend();
 			return tstLogs.printErr("Failed to get WU info");
 		}
 		return updateNodeCnt();
@@ -808,8 +859,17 @@ public class JDrain extends JFrame {
 	private void initWorkUnitPanel() {
 		//setup top part
 		textFieldWorkUnit.setText("");
-		//CGGtextFieldWorkUnit.setEditable(true);
+		textFieldWorkUnit.setEditable(true);
+		textFieldDrainSt.setText("");
+		textFieldDrainSt.setEditable(true);
 		btnEnter.setVisible(true);
+
+		//setup radio buttons
+		bIsHybrid = !ISHYBRID;
+		rdbtnPrime.setSelected(true);
+		rdbtnPrime.setEnabled(true);
+		rdbtnHybrid.setSelected(false);
+		rdbtnHybrid.setEnabled(true);
 
 		//bottom part
 		textFieldMfgn.setText("");
@@ -889,11 +949,11 @@ public class JDrain extends JFrame {
 		rdbtnHybrid = new JRadioButton("POK Hybrid");
 		rdbtnHybrid.setFont(PLAIN);
 		rdbtnHybrid.setToolTipText("Select if Machine is POK Hybrid. (NO MFS)");
-		String szHostName = System.getenv("HOSTNAME");
+		/*CGGString szHostName = System.getenv("HOSTNAME");
 		if ((szHostName != null) && (szHostName.toUpperCase().contains("SG.IBM.COM"))) {
 			//not only applicable to Singapore
 			rdbtnHybrid.setEnabled(false);
-		}
+		}*/
 		rdbtnHybrid.setSelected(false);
 		panelWorkUnit.add(rdbtnHybrid, gbcWU);
 
@@ -1027,6 +1087,7 @@ public class JDrain extends JFrame {
 		//create action listeners
 		rdbtnPrime.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				tstLogs.printInfo("Prime Selected");
 				rdbtnHybrid.setSelected(false);
 				bIsHybrid = !ISHYBRID;
 
@@ -1050,7 +1111,8 @@ public class JDrain extends JFrame {
 
 		rdbtnHybrid.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				tstLogs.displayInfoPopUpMessage("Enter order details manually since POK Hybrid are not in MFS");
+				tstLogs.printInfo("Hybrid Selected");
+				tstLogs.displayInfoPopUpMessage("Enter order details manually since POK Hybrid are not in MFS.\nNote that WU will be set to \"DUMMY\"");
 
 				rdbtnPrime.setSelected(false);
 				bIsHybrid = ISHYBRID;
@@ -1070,12 +1132,19 @@ public class JDrain extends JFrame {
 
 		ActionListener submit = new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
+				tstLogs.printInfo("=========== PROCESS START ===========");
+
 				//check if all fields are filled up
 				String szWorkUnitNo = textFieldWorkUnit.getText().toUpperCase().trim();
-				String szDrainStation = textFieldDrainSt.getText().toUpperCase().trim();
+				String szDrainStation = textFieldDrainSt.getText().toLowerCase().trim();
 				if (szWorkUnitNo.isEmpty() || szDrainStation.isEmpty()) {
 					tstLogs.displayErrPopUpMessage("Please fill up all fields.");
 					return;
+				}
+
+				//if work unit starts with 'W', remove the 'W' character
+				if (szWorkUnitNo.charAt(0) == 'W') {
+					szWorkUnitNo = szWorkUnitNo.substring(1);
 				}
 
 				//process work unit
@@ -1084,17 +1153,36 @@ public class JDrain extends JFrame {
 					return;
 				}
 				textFieldWorkUnit.setText(szWorkUnitNo);
+				textFieldDrainSt.setText(szDrainStation);
 
 				//for hybrid check if all fields are not empty
 				if (bIsHybrid) {
-					String szMfgn  = textFieldMfgn.getText();
-					String szOrno  = textFieldOrder.getText();
-					String szSerNo = textFieldSer.getText();
-					String szProd  = textFieldProd.getText();
-					String szModel = textFieldModel.getText();
+					String szMfgn  = textFieldMfgn.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
+					textFieldMfgn.setText(szMfgn);
+					String szOrno  = textFieldOrder.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
+					textFieldOrder.setText(szOrno);
+					String szSerNo = textFieldSer.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
+					textFieldSer.setText(szSerNo);
+					String szProd  = textFieldProd.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
+					textFieldProd.setText(szProd);
+					String szModel = textFieldModel.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
+					textFieldModel.setText(szModel);
 					if (szMfgn.isEmpty() || szOrno.isEmpty() || szSerNo.isEmpty() ||
 						szProd.isEmpty() || szModel.isEmpty()) {
 						tstLogs.displayErrPopUpMessage("Please fill up all fields since order is not in MFS.");
+						return;
+					}
+					//check length of product line and model if correct
+					if (szProd.length() != MINPRODLNLEN) {
+						tstLogs.displayErrPopUpMessage("Please enter a correct product line.");
+						return;
+					}
+					if (szModel.length() != MINMODELLEN) {
+						tstLogs.displayErrPopUpMessage("Please enter a correct product model.");
+						return;
+					}
+					if (szMfgn.length() != MINMFGNLEN) {
+						tstLogs.displayErrPopUpMessage("Please enter a correct MFGN.");
 						return;
 					}
 
@@ -1114,9 +1202,31 @@ public class JDrain extends JFrame {
 					tstLogs.displayInfoPopUpMessage("Will claim in WU.\nDo not close the application.");
 				}
 				if (performClaimIn(szWorkUnitNo) != tstLogs.PASS) {
-					tstLogs.displayErrPopUpMessage("Failed to claim in WU " + szWorkUnitNo.split(" ")[0] + "\nPlease inform ME team.");
+					displayTxt("<html><center>Failed to claim in WU " + szWorkUnitNo.split(" ")[0] +
+							   ". Please check if all info are correct and try again.<br><br>If error persists, please inform ME team.</center></html>");
+					tstLogs.displayErrPopUpMessage("Failed to claim in WU " + szWorkUnitNo.split(" ")[0] + ".\nPlease check if all info are correct.");
 					return;
 				}
+
+				//check if order is a reapply
+				JQuery qry = new JQuery(textFieldMfgn.getText(), tstLogs);
+				tstLogs.printInfo("Performing reapply query.");
+				if (qry.perfReapplyQry() != tstLogs.PASS) {
+					String szMsg = "Failed to perform query on QRYPROD. Please inform ME!";
+					displayTxt(szMsg);
+					tstLogs.printErr(szMsg);
+					tstLogs.displayErrPopUpMessage(szMsg);
+					performSuspend();
+					return;
+				} else if (qry.isReapply()) {
+					String szMsg = "There are components detected for pending removal at op 0807. Please route MFS back to op 0807 to process the removal.";
+					displayTxt(szMsg);
+					tstLogs.printErr(szMsg);
+					tstLogs.displayErrPopUpMessage(szMsg);
+					performSuspend();
+					return;
+				}
+
 				//disable all clickables
 				textFieldWorkUnit.setEditable(false);
 				textFieldDrainSt.setEditable(false);
@@ -1130,12 +1240,13 @@ public class JDrain extends JFrame {
 					textFieldProd.setEditable(false);
 					textFieldModel.setEditable(false);
 				}
-
 				prepareDrainRunPanels();
 
 				//initialize test case
 				if (initTestCase() != tstLogs.PASS) {
 					tstLogs.displayErrPopUpMessage("Failed to start test.\nPlease reinitialize the work station or inform MEQ team.");
+					performSuspend();
+					initDrainPanel();
 					return;
 				}
 				setRunningStartPanel();
@@ -1221,7 +1332,6 @@ public class JDrain extends JFrame {
 		gbcFindRdbtn.gridy = 1;
 		JRadioButton rdbtnFind = new JRadioButton("Enter Word To Find");
 		rdbtnFind.setFont(PLAIN);
-		rdbtnFind.setEnabled(false);
 		panelTools.add(rdbtnFind, gbcFindRdbtn);
 
 		GridBagConstraints gbcFindTextField = JGridConstraint.getDefaultObjectGbc(panels.DEFAULT);
@@ -1230,16 +1340,14 @@ public class JDrain extends JFrame {
 		gbcFindTextField.gridwidth = 1;
 		textFieldFind = new JTextField();
 		textFieldFind.setFont(PLAIN);
-		textFieldFind.setEnabled(false);
 		createPopUpMenu(textFieldFind);
 		panelTools.add(textFieldFind, gbcFindTextField);
 
 		GridBagConstraints gbcFindNextBtn = JGridConstraint.getDefaultObjectGbc(panels.DEFAULT);
 		gbcFindNextBtn.gridx = 2;
 		gbcFindNextBtn.gridy = 1;
-		JButton btnFindNext = new JButton("Next");
+		final JButton btnFindNext = new JButton("Next");
 		btnFindNext.setFont(PLAIN);
-		btnFindNext.setVisible(false);
 		panelTools.add(btnFindNext, gbcFindNextBtn);
 
 		// create text area
@@ -1258,6 +1366,8 @@ public class JDrain extends JFrame {
 
 		GridBagConstraints gbcScroll = JGridConstraint.getDefaultObjectGbc(panels.DEFAULT);
 		JScrollPane scrollPane = new JScrollPane(textPaneLogs);
+		Dimension d = scrollPane.getPreferredSize();
+		scrollPane.setPreferredSize(d);
 		panelLogsTextArea.add(scrollPane, gbcScroll);
 
 		//set text pane for the logs
@@ -1271,12 +1381,12 @@ public class JDrain extends JFrame {
 		});
 		textFieldFind.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				//TODO: findSearchWord(textPaneVpd, textFieldVpdFind, btnFindNextVpd);
+				findSearchWord(textPaneLogs, textFieldFind, btnFindNext);
 			}
 		});
 		btnFindNext.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				//TODO: findSearchWord(textPaneVpd, textFieldVpdFind, btnFindNextVpd);
+				findSearchWord(textPaneLogs, textFieldFind, btnFindNext);
 			}
 		});
 	} /** createTestLogsPanel - END */
@@ -1303,7 +1413,7 @@ public class JDrain extends JFrame {
 		gbcImg.gridy = 0;
 		panelImg = new JPanel();
 		panelImg.setLayout(gblImg);
-		panelImg.setVisible(false);
+		//CGGpanelImg.setVisible(false);
 		panelTestCase.add(panelImg, gbcImg);
 	} /** drawTestCaseImgPanel - END */
 
@@ -1374,6 +1484,7 @@ public class JDrain extends JFrame {
 	/** Setup buttons for ending drain process */
 	private void setupEndProcess() {
 		btnNextOp.setVisible(false);
+		btnFinish.setEnabled(true);
 		btnFinish.setVisible(true);
 	} /** setupEndProcess - END */
 
@@ -1477,7 +1588,7 @@ public class JDrain extends JFrame {
 
 				//check current OP
 				int iCurrentOp = tstCtl.addOpCnt();
-				if (iCurrentOp >= tstCtl.getMaxOpCnt()) {
+				if (iCurrentOp > tstCtl.getMaxOpCnt()) {
 					setupEndProcess();
 					return;
 				}
@@ -1502,6 +1613,7 @@ public class JDrain extends JFrame {
 				if (drawTestCase(currentStep.iOpNum) != tstLogs.PASS) {
 					tstLogs.displayErrPopUpMessage("Failed to find test case.\nPlease reinitialize the work station or inform MEQ team.");
 					if (bIsClaimedIn) {
+						displayTxt("Performing Suspend.");
 						if (performSuspend() != tstLogs.PASS) {
 							tstLogs.displayErrPopUpMessage("Failed to perform suspend.\nPlease inform ME team.");
 						}
@@ -1581,10 +1693,10 @@ public class JDrain extends JFrame {
 				double dRecommendedReading = tstCtl.getRecommendedReading();
 				if (dUserEntry < dRecommendedReading) {
 					String szMsg = "Reading did not reach recommended reading of " + dRecommendedReading;
-					tstLogs.printInfo(szMsg);
+					tstLogs.printErr(szMsg);
 					tstLogs.displayErrPopUpMessage(szMsg + "\nPlease abort to suspend operation.");
 
-					displayTxt("<html><font size=7 color=\"red\">" +
+					displayTxt("<html><font size=6 color=\"red\">" +
 							   "Reading did not reach recommended reading of " + dRecommendedReading + "." +
 							   "<br><br>" +
 							   "Please inform ME/MEQ Team!" +
