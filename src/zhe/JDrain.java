@@ -89,18 +89,17 @@ public class JDrain extends JFrame {
 	//private static String DEFAULTPC   = "drain01";
 	private static String DRAINCMD	= "/bin/bash /home/gem/scripts/drainHE.sh " + DEFAULTUSER + " " + DEFAULTSRVR;
 	private static String LOGINCMD	= " val_user";
-	private static String CLAIMINCMD  = " claim_in";
-	private static String CLAIMOUTCMD = " claim_out";
-	private static String SUSPEND	 = " suspend";
-	private static String STEPSTART   = " stepStart";
-	private static String STEPDATA	= " stepData";
-	private static String STEPEND	 = " stepEnd";
+	private static String CLAIMINCMD  = "claim_in";
+	private static String CLAIMOUTCMD = "claim_out";
+	private static String SUSPEND	 = "suspend";
+	private static String STEPSTART   = "stepStart";
+	private static String STEPDATA	= "stepData";
+	private static String STEPEND	 = "stepEnd";
 
 	/** Files to read */
-	private static String SEPARATR = "\\"; //CGG
-	//private static String CODELOC  = "/home/gem/scripts/";
-	private static String CODELOC  = "C:\\";
-	private static String TESTSTAT = "claimedWU\\teststat";//CGG
+	private static String SEPARATR = "/";
+	private static String CODELOC  = "/home/gem/scripts/";
+	private static String TESTSTAT = "claimedWU/teststat";
 	private static String INTROFILE= "0.PNG";
 
 	/** XML file variables */
@@ -119,7 +118,6 @@ public class JDrain extends JFrame {
 	private final static SimpleDateFormat TIMERFORMAT = new SimpleDateFormat("mm : ss");
 
 	/** Global variables */
-	private static String szHostName;
 	private static boolean bIsClaimedIn;
 	private static boolean bIsHybrid;
 	private static JTestCaseControl tstCtl;
@@ -166,10 +164,10 @@ public class JDrain extends JFrame {
 		gblContentPane.columnWeights = new double[]{2};
 		contentPane.setLayout(gblContentPane);
 
-		//if (!isValidOS()) {
-		//	JOptionPane.showMessageDialog(null, "Cannot run application in current PC", "Error", JOptionPane.ERROR_MESSAGE);
-		//	System.exit(0);
-		//}
+		if (!isValidOS()) {
+			JOptionPane.showMessageDialog(null, "Cannot run application in current PC", "Error", JOptionPane.ERROR_MESSAGE);
+			System.exit(0);
+		}
 
 		//set up logging file
 		Date date = new Date();
@@ -181,7 +179,6 @@ public class JDrain extends JFrame {
 		bIsHybrid = !ISHYBRID;
 
 		createMenuBar();
-		//createLoginPanel();
 		createDrainPanel();
 		prepareDrainRunPanels();
 		pack();
@@ -260,15 +257,24 @@ public class JDrain extends JFrame {
 	private int performClaimIn(String szWorkUnit) {
 		tstLogs.printInfo("Performing MFS Claim-IN for WU " + szWorkUnit);
 		//call script to claim-in
-		/*CGGif (runScript(DRAINCMD + " " + szHostName + CLAIMINCMD + " " + szWorkUnit) != 0) {
-			return tstLogs.printErr("Claim IN failed");
-		}*/
-		tstLogs.printInfo("Claim IN Successful.");
-		bIsClaimedIn = CLAIMEDIN;
+		int iRet = tstLogs.PASS;
 		if (bIsHybrid) {
-			return updateNodeCnt();
+			if (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + szWorkUnit) != 0) {
+				return tstLogs.printErr("Claim IN failed");
+			}
+			iRet = updateNodeCnt();
+		} else {
+			if (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + CLAIMINCMD + " " + szWorkUnit) != 0) {
+				return tstLogs.printErr("Claim IN failed");
+			}
+			iRet = updateWorkUnitPanel();
 		}
-		return updateWorkUnitPanel();
+
+		if (iRet == tstLogs.PASS) {
+			tstLogs.printInfo("Claim IN Successful.");
+			bIsClaimedIn = CLAIMEDIN;
+		}
+		return iRet;
 	} /** performClaimIn - END */
 
 	/** Perform claim out */
@@ -276,9 +282,14 @@ public class JDrain extends JFrame {
 		if (bIsClaimedIn) {
 			tstLogs.printInfo("Performing MFS Claim-OUT for WU " + textFieldWorkUnit.getText());
 			//call script to claim-out
-			/*CGGif (runScript(DRAINCMD + " " + szHostName + CLAIMOUTCMD) != 0) {
+			String szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + CLAIMOUTCMD;
+			if (bIsHybrid) {
+				szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + "DUMMYEND";
+			}
+
+			if (runScript(szScript) != 0) {
 				return tstLogs.printErr("Claim OUT failed");
-			}*/
+			}
 
 			tstLogs.printInfo("Claim OUT Successful.");
 			bIsClaimedIn = !CLAIMEDIN;
@@ -294,9 +305,14 @@ public class JDrain extends JFrame {
 
 			tstLogs.printInfo("Performing MFS suspend for WU " + textFieldWorkUnit.getText());
 			//call script to suspend
-			/*CGGif (runScript(DRAINCMD + " " + szHostName + SUSPEND) != 0) {
+			String szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + SUSPEND;
+			if (bIsHybrid) {
+				szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + "DUMMYEND";
+			}
+
+			if (runScript(szScript) != 0) {
 				return tstLogs.printErr("Suspend failed");
-			}*/
+			}
 
 			tstLogs.printInfo("Process suspended.");
 			tstLogs.displayInfoPopUpMessage("Process suspended.");
@@ -311,9 +327,9 @@ public class JDrain extends JFrame {
 		String szStepName = "N" + tstCtl.getCurrentNodeCnt() + "S" + tstCtl.getOpCnt();
 		tstLogs.printInfo("Performing Step Start " + szStepName);
 		
-		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + szHostName + STEPSTART + " " + szStepName + " " + szStepName) != 0)) {
+		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPSTART + " " + szStepName + " " + szStepName) != 0)) {
 			return tstLogs.printErr("Step start failed");
-		}*/
+		}
 		return tstLogs.PASS;
 	} /** performStepStart - END */
 
@@ -321,9 +337,9 @@ public class JDrain extends JFrame {
 	private static int performStepEnd() {
 		tstLogs.printInfo("Performing Step End");
 		//call script to step end
-		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + szHostName + STEPEND) != 0)) {
+		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPEND) != 0)) {
 			return tstLogs.printErr("Step End failed");
-		}*/
+		}
 		return tstLogs.PASS;
 	} /** performStepEnd - END */
 
@@ -334,9 +350,9 @@ public class JDrain extends JFrame {
 		String szTrimmedData = szData.replaceAll("\\s","");
 		tstLogs.printInfo("Performing Step Data " + szTrimmedData);
 		//call script to step data
-		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + szHostName + STEPDATA + " " + szTrimmedData) != 0)) {
+		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPDATA + " " + szTrimmedData) != 0)) {
 			return tstLogs.printErr("Step Data failed");
-		}*/
+		}
 		return tstLogs.PASS;
 	} /** performStepData - END */
 
@@ -584,63 +600,6 @@ public class JDrain extends JFrame {
 		});
 	} /** createMenuBar - END */
 
-	/*JPanel panelLogin;*/
-	/** Create login panel */
-	/*private void createLoginPanel() {
-		//create login panel
-		GridBagLayout gblLogin = new GridBagLayout();
-		gblLogin.rowHeights = new int[]{150, 1, 1, 1, 150};
-		gblLogin.rowWeights = new double[]{1, 0, 0.1, 0.1, 1};
-		gblLogin.columnWidths = new int[]{150, 1, 150};
-		gblLogin.columnWeights = new double[]{1, 0, 1};
-
-		panelLogin = new JPanel();
-		panelLogin.setLayout(gblLogin);
-		panelLogin.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
-		contentPane.add(panelLogin);
-		
-		//write title
-		GridBagConstraints gbcTitleLabel = JGridConstraint.getDefaultObjectGbc(panels.LOGIN);
-		gbcTitleLabel.gridx = 1;
-		gbcTitleLabel.gridy = 1;
-		JLabel lblTitle = new JLabel("Drain WorkStation Tool");
-		lblTitle.setFont(TITLE);
-		panelLogin.add(lblTitle, gbcTitleLabel);
-
-		GridBagConstraints gbcLoginBtn = JGridConstraint.getDefaultObjectGbc(panels.LOGIN);
-		gbcLoginBtn.gridx = 1;
-		gbcLoginBtn.gridy = 2;
-		JButton btnLogin = new JButton("LOGIN");
-		btnLogin.setFont(PLAIN);
-		panelLogin.add(btnLogin, gbcLoginBtn);
-		//add action listeners
-		btnLogin.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				if (performLogin() == tstLogs.PASS) {
-					mnitmLogout.setEnabled(true);
-					panelLogin.setVisible(false);
-					initDrainPanel();
-					pack();
-				} else {
-					tstLogs.displayErrPopUpMessage("Failed to login.\nPlease try again.");
-				}
-			}
-		});
-
-		GridBagConstraints gbcCancelBtn = JGridConstraint.getDefaultObjectGbc(panels.LOGIN);
-		gbcCancelBtn.gridx = 1;
-		gbcCancelBtn.gridy = 3;
-		JButton btnLoginCancel = new JButton("CANCEL");
-		btnLoginCancel.setFont(PLAIN);
-		panelLogin.add(btnLoginCancel, gbcCancelBtn);
-		//add action listeners
-		btnLoginCancel.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				System.exit(0);
-			}
-		});
-	}*/ /** createLoginPanel - END */
-	
 	/** Initialize drain panel */
 	private void initDrainPanel() {
 		//initialize work unit panel
@@ -653,7 +612,6 @@ public class JDrain extends JFrame {
 		initTestCasePanel();
 
 		//display drain panel
-		//panelDrain.setVisible(true);
 		//reset flag every init
 		bIsClaimedIn = !CLAIMEDIN;
 	} /** initDrainPanel - END */
@@ -774,8 +732,6 @@ public class JDrain extends JFrame {
 					}
 
 					initDrainPanel();
-					//CGGpanelTestCase.setVisible(false);
-					//CGGpanelStart.setVisible(false);
 					pack();
 				}
 			}
@@ -949,11 +905,6 @@ public class JDrain extends JFrame {
 		rdbtnHybrid = new JRadioButton("POK Hybrid");
 		rdbtnHybrid.setFont(PLAIN);
 		rdbtnHybrid.setToolTipText("Select if Machine is POK Hybrid. (NO MFS)");
-		/*CGGString szHostName = System.getenv("HOSTNAME");
-		if ((szHostName != null) && (szHostName.toUpperCase().contains("SG.IBM.COM"))) {
-			//not only applicable to Singapore
-			rdbtnHybrid.setEnabled(false);
-		}*/
 		rdbtnHybrid.setSelected(false);
 		panelWorkUnit.add(rdbtnHybrid, gbcWU);
 
@@ -1132,6 +1083,7 @@ public class JDrain extends JFrame {
 
 		ActionListener submit = new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
+				initTestCasePanel();
 				tabbedPane.setSelectedIndex(0);
 				tstLogs.printInfo("=========== PROCESS START ===========");
 
@@ -1192,10 +1144,10 @@ public class JDrain extends JFrame {
 
 				//perform login
 				displayTxt("Logging IN");
-				//if (performLogin() != tstLogs.PASS) {
-				//	tstLogs.displayErrPopUpMessage("Failed to login.\nPlease try again.");
-				//	return;
-				//}
+				if (performLogin() != tstLogs.PASS) {
+					tstLogs.displayErrPopUpMessage("Failed to login.\nPlease try again.");
+					return;
+				}
 
 				//perform claim-in
 				if (!bIsHybrid) {
@@ -1414,7 +1366,6 @@ public class JDrain extends JFrame {
 		gbcImg.gridy = 0;
 		panelImg = new JPanel();
 		panelImg.setLayout(gblImg);
-		//CGGpanelImg.setVisible(false);
 		panelTestCase.add(panelImg, gbcImg);
 	} /** drawTestCaseImgPanel - END */
 
@@ -1649,7 +1600,7 @@ public class JDrain extends JFrame {
 				btnStartTimer.setEnabled(false);
 
 				//get timer info
-				final long lMilliSeconds = 1000;//DBG 
+				final long lMilliSeconds = 1000;//CGGDBG 
 				//CGGfinal long lMilliSeconds = tstCtl.getTimer();
 
 				final String szStartTime = TIMERFORMAT.format(new Date(lMilliSeconds));
@@ -1724,8 +1675,6 @@ public class JDrain extends JFrame {
 				}
 
 				initDrainPanel();
-				//CGGpanelTestCase.setVisible(false);
-				//CGGpanelStart.setVisible(false);
 				pack();
 			}
 		});

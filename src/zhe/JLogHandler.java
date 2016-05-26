@@ -128,7 +128,7 @@ class JLogHandler {
 				}
 				document.insertString(document.getLength(), szMsg + "\n", style);
 				StyleConstants.setForeground(style, Color.black);
-				//CGGtextPane.setCaretPosition(0);	
+				textPane.setCaretPosition(textPane.getDocument().getLength());
 			} catch (Exception ex) {
 				JTextPane tmpPane = textPane;
 				textPane = null;
