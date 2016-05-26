@@ -72,13 +72,17 @@ public class JDrain extends JFrame {
 	/** Constants */
 	private static String VERSION = "v1.20";
 	private static String DUMMY = "DUMMY";
-	private static int MINWORKUNITLEN = 8;
 	private static Font TITLE  = new Font("Tahoma", Font.BOLD, 14);
 	private static Font TSTLBL = new Font("Tahoma", Font.PLAIN, 8);
 	private static Font PLAIN  = new Font("Tahoma", Font.PLAIN, 11);
 	private static Font BOLD = new Font("Tahoma", Font.BOLD, 11);
+	private static Font LOGFONTSMALL  = new Font("Tahoma", Font.PLAIN, 11);
+	private static Font LOGFONTMEDIUM = new Font("Tahoma", Font.PLAIN, 13);
+	private static Font LOGFONTLARGE  = new Font("Tahoma", Font.PLAIN, 15);
 	private static boolean CLAIMEDIN = true;
 	private static boolean ISHYBRID  = true;
+	private static int MINWORKUNITLEN = 8;
+	private static int MINDRAINSTLEN  = 3;
 	private static int MINMODELLEN  = 3;
 	private static int MINMFGNLEN   = 7;
 	private static int MINPRODLNLEN = 7;
@@ -122,6 +126,7 @@ public class JDrain extends JFrame {
 	private static boolean bIsHybrid;
 	private static JTestCaseControl tstCtl;
 	private static JLogHandler tstLogs;
+	private Font logFont;
 
 	/**
 	 * Launch the application.
@@ -168,6 +173,9 @@ public class JDrain extends JFrame {
 			JOptionPane.showMessageDialog(null, "Cannot run application in current PC", "Error", JOptionPane.ERROR_MESSAGE);
 			System.exit(0);
 		}
+
+        //set log font to medium at beginning
+        logFont = LOGFONTMEDIUM;
 
 		//set up logging file
 		Date date = new Date();
@@ -264,6 +272,8 @@ public class JDrain extends JFrame {
 			}
 			iRet = updateNodeCnt();
 		} else {
+			displayTxt("Claiming IN");
+			tstLogs.displayInfoPopUpMessage("Will claim in WU.\nDo not close the application.");
 			if (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + CLAIMINCMD + " " + szWorkUnit) != 0) {
 				return tstLogs.printErr("Claim IN failed");
 			}
@@ -568,6 +578,29 @@ public class JDrain extends JFrame {
 		JMenuItem mnitmExit = mnFile.add("Exit");
 		mnitmExit.setMnemonic(KeyEvent.VK_X);
 
+		//Format menu
+		JMenu mnFormat = new JMenu("Format");
+		mnFormat.setMnemonic(KeyEvent.VK_O);
+		menuBar.add(mnFormat);
+
+		JMenu mnLogsFont = new JMenu("Log Font");
+		mnLogsFont.setMnemonic(KeyEvent.VK_L);
+		mnLogsFont.setToolTipText("Sets the font size of the text displayed in the tabbed panels.");
+		mnFormat.add(mnLogsFont);
+
+		JMenuItem mnitmSmall = mnLogsFont.add("1: Small");
+		KeyStroke keyStrokectrl1 = KeyStroke.getKeyStroke(JControlCmdDef.CTRL1);
+		mnitmSmall.setAccelerator(keyStrokectrl1);
+		mnitmSmall.setMnemonic(KeyEvent.VK_1);
+		final JMenuItem mnitmMedium = mnLogsFont.add("2: Medium");
+		KeyStroke keyStrokectrl2 = KeyStroke.getKeyStroke(JControlCmdDef.CTRL2);
+		mnitmMedium.setAccelerator(keyStrokectrl2);
+		mnitmMedium.setMnemonic(KeyEvent.VK_2);
+		final JMenuItem mnitmLarge = mnLogsFont.add("3: Large");
+		KeyStroke keyStrokectrl3 = KeyStroke.getKeyStroke(JControlCmdDef.CTRL3);
+		mnitmLarge.setAccelerator(keyStrokectrl3);
+		mnitmLarge.setMnemonic(KeyEvent.VK_3);
+
 		//Help menu
 		JMenu mnHelp = new JMenu("Help");
 		mnHelp.setMnemonic(KeyEvent.VK_H);
@@ -592,6 +625,23 @@ public class JDrain extends JFrame {
 				}
 			}
 		});
+
+		ActionListener fontSizeAction = new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if (e.getSource() == mnitmMedium) {
+					logFont = LOGFONTMEDIUM;
+				} else if (e.getSource() == mnitmLarge) {
+					logFont = LOGFONTLARGE;
+				} else {
+					logFont = LOGFONTSMALL;
+				}
+
+				textPaneLogs.setFont(logFont);
+			}
+		};
+		mnitmSmall.addActionListener(fontSizeAction);
+		mnitmMedium.addActionListener(fontSizeAction);
+		mnitmLarge.addActionListener(fontSizeAction);
 
 		mnitmAbout.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -1105,6 +1155,12 @@ public class JDrain extends JFrame {
 					tstLogs.displayErrPopUpMessage("Please enter a valid work unit number");	
 					return;
 				}
+
+				//process drain station
+				if (szDrainStation.length() <= MINDRAINSTLEN) {
+					tstLogs.displayErrPopUpMessage("Please enter a valid drain station name");
+					return;
+				}
 				textFieldWorkUnit.setText(szWorkUnitNo);
 				textFieldDrainSt.setText(szDrainStation);
 
@@ -1143,20 +1199,17 @@ public class JDrain extends JFrame {
 				}
 
 				//perform login
-				displayTxt("Logging IN");
 				if (performLogin() != tstLogs.PASS) {
+					displayTxt("<html><font size=5 color=\"red\">Login Failed</font></html>");
 					tstLogs.displayErrPopUpMessage("Failed to login.\nPlease try again.");
 					return;
 				}
 
 				//perform claim-in
-				if (!bIsHybrid) {
-					displayTxt("Claiming IN");
-					tstLogs.displayInfoPopUpMessage("Will claim in WU.\nDo not close the application.");
-				}
 				if (performClaimIn(szWorkUnitNo) != tstLogs.PASS) {
-					displayTxt("<html><center>Failed to claim in WU " + szWorkUnitNo.split(" ")[0] +
-							   ". Please check if all info are correct and try again.<br><br>If error persists, please inform ME team.</center></html>");
+					displayTxt("<html><font size=5 color=\"red\"><center>Failed to claim in WU " + szWorkUnitNo.split(" ")[0] +
+							   ".<br><br>Please check if all info are correct and try again." +
+							   "<br><br>If error persists, please inform ME team.</center></font></html>");
 					tstLogs.displayErrPopUpMessage("Failed to claim in WU " + szWorkUnitNo.split(" ")[0] + ".\nPlease check if all info are correct.");
 					return;
 				}
@@ -1283,9 +1336,9 @@ public class JDrain extends JFrame {
 	
 		GridBagConstraints gbcFindRdbtn = JGridConstraint.getDefaultObjectGbc(panels.DEFAULT);
 		gbcFindRdbtn.gridy = 1;
-		JRadioButton rdbtnFind = new JRadioButton("Enter Word To Find");
-		rdbtnFind.setFont(PLAIN);
-		panelTools.add(rdbtnFind, gbcFindRdbtn);
+		JLabel lblFind = new JLabel("Enter Word To Find");
+		lblFind.setFont(PLAIN);
+		panelTools.add(lblFind, gbcFindRdbtn);
 
 		GridBagConstraints gbcFindTextField = JGridConstraint.getDefaultObjectGbc(panels.DEFAULT);
 		gbcFindTextField.gridx = 1;
@@ -1313,7 +1366,7 @@ public class JDrain extends JFrame {
 		panelTestLogs.add(panelLogsTextArea, gbcArea);
 
 		textPaneLogs = new JTextPane();
-		textPaneLogs.setFont(PLAIN);
+		textPaneLogs.setFont(logFont);
 		textPaneLogs.setEditable(false);
 		createPopUpMenu(textPaneLogs);
 
@@ -1327,11 +1380,6 @@ public class JDrain extends JFrame {
 		tstLogs.setTextPane(textPaneLogs);
 
 		//create action listeners
-		rdbtnFind.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				textFieldFind.setEnabled(true);
-			}
-		});
 		textFieldFind.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				findSearchWord(textPaneLogs, textFieldFind, btnFindNext);
@@ -1600,8 +1648,8 @@ public class JDrain extends JFrame {
 				btnStartTimer.setEnabled(false);
 
 				//get timer info
-				final long lMilliSeconds = 1000;//CGGDBG 
-				//CGGfinal long lMilliSeconds = tstCtl.getTimer();
+				//final long lMilliSeconds = 1000;//CGGDBG 
+				final long lMilliSeconds = tstCtl.getTimer();
 
 				final String szStartTime = TIMERFORMAT.format(new Date(lMilliSeconds));
 				tstLogs.printInfo("Starting countdown of " + szStartTime);
