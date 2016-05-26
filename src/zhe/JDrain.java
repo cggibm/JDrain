@@ -1648,7 +1648,6 @@ public class JDrain extends JFrame {
 				btnStartTimer.setEnabled(false);
 
 				//get timer info
-				//final long lMilliSeconds = 1000;//CGGDBG 
 				final long lMilliSeconds = tstCtl.getTimer();
 
 				final String szStartTime = TIMERFORMAT.format(new Date(lMilliSeconds));
