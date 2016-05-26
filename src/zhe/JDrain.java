@@ -101,9 +101,10 @@ public class JDrain extends JFrame {
 	private static String STEPEND	 = "stepEnd";
 
 	/** Files to read */
-	private static String SEPARATR = "/";
-	private static String CODELOC  = "/home/gem/scripts/";
-	private static String TESTSTAT = "claimedWU/teststat";
+	private static String SEPARATR = "\\"; //CGG
+	//private static String CODELOC  = "/home/gem/scripts/";
+	private static String CODELOC  = "C:\\";
+	private static String TESTSTAT = "claimedWU\\teststat";//CGG
 	private static String INTROFILE= "0.PNG";
 
 	/** XML file variables */
@@ -169,10 +170,10 @@ public class JDrain extends JFrame {
 		gblContentPane.columnWeights = new double[]{2};
 		contentPane.setLayout(gblContentPane);
 
-		if (!isValidOS()) {
-			JOptionPane.showMessageDialog(null, "Cannot run application in current PC", "Error", JOptionPane.ERROR_MESSAGE);
-			System.exit(0);
-		}
+		//if (!isValidOS()) {
+		//	JOptionPane.showMessageDialog(null, "Cannot run application in current PC", "Error", JOptionPane.ERROR_MESSAGE);
+		//	System.exit(0);
+		//}
 
         //set log font to medium at beginning
         logFont = LOGFONTMEDIUM;
@@ -267,16 +268,16 @@ public class JDrain extends JFrame {
 		//call script to claim-in
 		int iRet = tstLogs.PASS;
 		if (bIsHybrid) {
-			if (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + szWorkUnit) != 0) {
+			/*CGGif (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + szWorkUnit) != 0) {
 				return tstLogs.printErr("Claim IN failed");
-			}
+			}*/
 			iRet = updateNodeCnt();
 		} else {
 			displayTxt("Claiming IN");
 			tstLogs.displayInfoPopUpMessage("Will claim in WU.\nDo not close the application.");
-			if (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + CLAIMINCMD + " " + szWorkUnit) != 0) {
+			/*CGGif (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + CLAIMINCMD + " " + szWorkUnit) != 0) {
 				return tstLogs.printErr("Claim IN failed");
-			}
+			}*/
 			iRet = updateWorkUnitPanel();
 		}
 
@@ -297,9 +298,9 @@ public class JDrain extends JFrame {
 				szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + "DUMMYEND";
 			}
 
-			if (runScript(szScript) != 0) {
+			/*CGGif (runScript(szScript) != 0) {
 				return tstLogs.printErr("Claim OUT failed");
-			}
+			}*/
 
 			tstLogs.printInfo("Claim OUT Successful.");
 			bIsClaimedIn = !CLAIMEDIN;
@@ -320,9 +321,9 @@ public class JDrain extends JFrame {
 				szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + "DUMMYEND";
 			}
 
-			if (runScript(szScript) != 0) {
+			/*CGGif (runScript(szScript) != 0) {
 				return tstLogs.printErr("Suspend failed");
-			}
+			}*/
 
 			tstLogs.printInfo("Process suspended.");
 			tstLogs.displayInfoPopUpMessage("Process suspended.");
@@ -337,9 +338,9 @@ public class JDrain extends JFrame {
 		String szStepName = "N" + tstCtl.getCurrentNodeCnt() + "S" + tstCtl.getOpCnt();
 		tstLogs.printInfo("Performing Step Start " + szStepName);
 		
-		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPSTART + " " + szStepName + " " + szStepName) != 0)) {
+		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPSTART + " " + szStepName + " " + szStepName) != 0)) {
 			return tstLogs.printErr("Step start failed");
-		}
+		}*/
 		return tstLogs.PASS;
 	} /** performStepStart - END */
 
@@ -347,9 +348,9 @@ public class JDrain extends JFrame {
 	private static int performStepEnd() {
 		tstLogs.printInfo("Performing Step End");
 		//call script to step end
-		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPEND) != 0)) {
+		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPEND) != 0)) {
 			return tstLogs.printErr("Step End failed");
-		}
+		}*/
 		return tstLogs.PASS;
 	} /** performStepEnd - END */
 
@@ -360,9 +361,9 @@ public class JDrain extends JFrame {
 		String szTrimmedData = szData.replaceAll("\\s","");
 		tstLogs.printInfo("Performing Step Data " + szTrimmedData);
 		//call script to step data
-		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPDATA + " " + szTrimmedData) != 0)) {
+		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPDATA + " " + szTrimmedData) != 0)) {
 			return tstLogs.printErr("Step Data failed");
-		}
+		}*/
 		return tstLogs.PASS;
 	} /** performStepData - END */
 
@@ -645,7 +646,7 @@ public class JDrain extends JFrame {
 
 		mnitmAbout.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				tstLogs.displayInfoPopUpMessage("Drain Tool Version " + VERSION + ".");
+				tstLogs.displayInfoPopUpMessage("JDrain Tool Version " + VERSION + ".");
 			}
 		});
 	} /** createMenuBar - END */
@@ -1089,6 +1090,7 @@ public class JDrain extends JFrame {
 		rdbtnPrime.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				tstLogs.printInfo("Prime Selected");
+				rdbtnPrime.setSelected(true);
 				rdbtnHybrid.setSelected(false);
 				bIsHybrid = !ISHYBRID;
 
@@ -1112,11 +1114,12 @@ public class JDrain extends JFrame {
 
 		rdbtnHybrid.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				tstLogs.printInfo("Hybrid Selected");
-				tstLogs.displayInfoPopUpMessage("Enter order details manually since POK Hybrid are not in MFS.\nNote that WU will be set to \"DUMMY\"");
-
+				rdbtnHybrid.setSelected(true);
 				rdbtnPrime.setSelected(false);
 				bIsHybrid = ISHYBRID;
+
+				tstLogs.printInfo("Hybrid Selected");
+				tstLogs.displayInfoPopUpMessage("Enter order details manually since POK Hybrid are not in MFS.\nNote that WU will be set to \"DUMMY\"");
 				
 				//for hybrid, work unit is always set to DUMMY
 				textFieldWorkUnit.setText(DUMMY);
@@ -1199,13 +1202,11 @@ public class JDrain extends JFrame {
 				}
 
 				//perform login
-				if (performLogin() != tstLogs.PASS) {
-					displayTxt("<html><font size=5 color=\"red\">Login Failed</font></html>");
-					tstLogs.displayErrPopUpMessage("Failed to login.\nPlease try again.");
-					return;
-				}
-
-				//perform claim-in
+				//if (performLogin() != tstLogs.PASS) {
+					//displayTxt("<html><font size=5 color=\"red\">Login Failed</font></html>");
+					//tstLogs.displayErrPopUpMessage("Failed to login.\nPlease try again.");
+					//return;
+				//}
 				if (performClaimIn(szWorkUnitNo) != tstLogs.PASS) {
 					displayTxt("<html><font size=5 color=\"red\"><center>Failed to claim in WU " + szWorkUnitNo.split(" ")[0] +
 							   ".<br><br>Please check if all info are correct and try again." +
@@ -1648,7 +1649,8 @@ public class JDrain extends JFrame {
 				btnStartTimer.setEnabled(false);
 
 				//get timer info
-				final long lMilliSeconds = tstCtl.getTimer();
+				final long lMilliSeconds = 1000;//DBG 
+				//CGGfinal long lMilliSeconds = tstCtl.getTimer();
 
 				final String szStartTime = TIMERFORMAT.format(new Date(lMilliSeconds));
 				tstLogs.printInfo("Starting countdown of " + szStartTime);

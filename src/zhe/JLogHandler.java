@@ -121,7 +121,7 @@ class JLogHandler {
 			try {
 				StyledDocument document = (StyledDocument)textPane.getDocument();
 				Style style = textPane.addStyle(null, null);
-				if (szMsg.contains("ERROR")) {
+				if ((szMsg.contains("(ERROR)")) || (szMsg.contains("(EXERR)"))) {
 					StyleConstants.setForeground(style, Color.red);
 				} else {
 					StyleConstants.setForeground(style, Color.black);
