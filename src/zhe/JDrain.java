@@ -101,10 +101,9 @@ public class JDrain extends JFrame {
 	private static String STEPEND	 = "stepEnd";
 
 	/** Files to read */
-	private static String SEPARATR = "\\"; //CGG
-	//private static String CODELOC  = "/home/gem/scripts/";
-	private static String CODELOC  = "C:\\";
-	private static String TESTSTAT = "claimedWU\\teststat";//CGG
+	private static String SEPARATR = "/";
+	private static String CODELOC  = "/home/gem/scripts/";
+	private static String TESTSTAT = "claimedWU/teststat";
 	private static String INTROFILE= "0.PNG";
 
 	/** XML file variables */
@@ -170,13 +169,13 @@ public class JDrain extends JFrame {
 		gblContentPane.columnWeights = new double[]{2};
 		contentPane.setLayout(gblContentPane);
 
-		//if (!isValidOS()) {
-		//	JOptionPane.showMessageDialog(null, "Cannot run application in current PC", "Error", JOptionPane.ERROR_MESSAGE);
-		//	System.exit(0);
-		//}
+		if (!isValidOS()) {
+			JOptionPane.showMessageDialog(null, "Cannot run application in current PC", "Error", JOptionPane.ERROR_MESSAGE);
+			System.exit(0);
+		}
 
-        //set log font to medium at beginning
-        logFont = LOGFONTMEDIUM;
+		//set log font to medium at beginning
+		logFont = LOGFONTMEDIUM;
 
 		//set up logging file
 		Date date = new Date();
@@ -268,16 +267,16 @@ public class JDrain extends JFrame {
 		//call script to claim-in
 		int iRet = tstLogs.PASS;
 		if (bIsHybrid) {
-			/*CGGif (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + szWorkUnit) != 0) {
+			if (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + szWorkUnit) != 0) {
 				return tstLogs.printErr("Claim IN failed");
-			}*/
+			}
 			iRet = updateNodeCnt();
 		} else {
 			displayTxt("Claiming IN");
 			tstLogs.displayInfoPopUpMessage("Will claim in WU.\nDo not close the application.");
-			/*CGGif (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + CLAIMINCMD + " " + szWorkUnit) != 0) {
+			if (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + CLAIMINCMD + " " + szWorkUnit) != 0) {
 				return tstLogs.printErr("Claim IN failed");
-			}*/
+			}
 			iRet = updateWorkUnitPanel();
 		}
 
@@ -298,9 +297,9 @@ public class JDrain extends JFrame {
 				szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + "DUMMYEND";
 			}
 
-			/*CGGif (runScript(szScript) != 0) {
+			if (runScript(szScript) != 0) {
 				return tstLogs.printErr("Claim OUT failed");
-			}*/
+			}
 
 			tstLogs.printInfo("Claim OUT Successful.");
 			bIsClaimedIn = !CLAIMEDIN;
@@ -321,9 +320,9 @@ public class JDrain extends JFrame {
 				szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + "DUMMYEND";
 			}
 
-			/*CGGif (runScript(szScript) != 0) {
+			if (runScript(szScript) != 0) {
 				return tstLogs.printErr("Suspend failed");
-			}*/
+			}
 
 			tstLogs.printInfo("Process suspended.");
 			tstLogs.displayInfoPopUpMessage("Process suspended.");
@@ -338,9 +337,9 @@ public class JDrain extends JFrame {
 		String szStepName = "N" + tstCtl.getCurrentNodeCnt() + "S" + tstCtl.getOpCnt();
 		tstLogs.printInfo("Performing Step Start " + szStepName);
 		
-		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPSTART + " " + szStepName + " " + szStepName) != 0)) {
+		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPSTART + " " + szStepName + " " + szStepName) != 0)) {
 			return tstLogs.printErr("Step start failed");
-		}*/
+		}
 		return tstLogs.PASS;
 	} /** performStepStart - END */
 
@@ -348,9 +347,9 @@ public class JDrain extends JFrame {
 	private static int performStepEnd() {
 		tstLogs.printInfo("Performing Step End");
 		//call script to step end
-		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPEND) != 0)) {
+		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPEND) != 0)) {
 			return tstLogs.printErr("Step End failed");
-		}*/
+		}
 		return tstLogs.PASS;
 	} /** performStepEnd - END */
 
@@ -361,9 +360,9 @@ public class JDrain extends JFrame {
 		String szTrimmedData = szData.replaceAll("\\s","");
 		tstLogs.printInfo("Performing Step Data " + szTrimmedData);
 		//call script to step data
-		/*CGGif ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPDATA + " " + szTrimmedData) != 0)) {
+		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPDATA + " " + szTrimmedData) != 0)) {
 			return tstLogs.printErr("Step Data failed");
-		}*/
+		}
 		return tstLogs.PASS;
 	} /** performStepData - END */
 
@@ -388,15 +387,15 @@ public class JDrain extends JFrame {
 				Rectangle viewRect;
 			   	if ( ((iPos = szTextPaneContents.toUpperCase().indexOf(szStrToFind.toUpperCase(), iPos)) >= 0) ||
 			   		 ((iPos = szTextPaneContents.toUpperCase().indexOf(szStrToFind.toUpperCase(), 0   )) >= 0) ) {
-                    //get the rectangle of the where the text would be visible...
-                    viewRect = textPaneToFind.modelToView(iPos);
-                    //scroll to make the rectangle visible
-                    textPaneToFind.scrollRectToVisible(viewRect);
-                    //highlight the text
-                    textPaneToFind.setCaretPosition(iPos);
-                    textPaneToFind.moveCaretPosition(iPos + iStrFindLen);
-                    //enable next button
-                    btnNext.setVisible(true);
+					//get the rectangle of the where the text would be visible...
+					viewRect = textPaneToFind.modelToView(iPos);
+					//scroll to make the rectangle visible
+					textPaneToFind.scrollRectToVisible(viewRect);
+					//highlight the text
+					textPaneToFind.setCaretPosition(iPos);
+					textPaneToFind.moveCaretPosition(iPos + iStrFindLen);
+					//enable next button
+					btnNext.setVisible(true);
 			   	} //if - END
 			} catch (Exception ex) {
 				tstLogs.printErr("Exception encountered while searching text", ex);
@@ -812,28 +811,56 @@ public class JDrain extends JFrame {
 		BufferedReader in = null;
 		try {
 			String szTmp = System.getProperty("user.dir") + SEPARATR + TESTSTAT;
+			if (!new File(szTmp).exists()) {
+				tstLogs.printErr("Missing teststat file. Claim-IN failed. Please inform ME.");
+				return tstLogs.ERROR;
+			}
+
 			in = new BufferedReader(new FileReader(szTmp));
 			while ((szTmp = in.readLine()) != null) {
 				//all text are based on script
-				if (szTmp.contains("(TSYNM ") || szTmp.contains("(ORDRNUM ") || szTmp.contains("(SN ") ||
+				if (szTmp.contains("(SYSTEM ") || szTmp.contains("(ORDRNUM ") || szTmp.contains("(SN ") ||
 					szTmp.contains("(PR_ID ") || szTmp.contains("(MODEL ")) {
 					tstLogs.printDbg("Reading line " + szTmp);
 					aszTmp = szTmp.toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim().split(" ");
 					switch (aszTmp[0]) {
-					case "TSYNM":
-						textFieldMfgn.setText(aszTmp[1]);
+					case "SYSTEM":
+						if (aszTmp.length >= 2) {
+							textFieldMfgn.setText(aszTmp[1]);
+							if (textFieldOrder.getText().trim().isEmpty()) {
+								textFieldOrder.setText(aszTmp[1].substring(1));
+							}
+						} else {
+							tstLogs.printErr("MFGN not found. Please inform ME.");
+						}
 						break;
 					case "ORDRNUM":
-						textFieldOrder.setText(aszTmp[1]);
+						if (aszTmp.length >= 2) {
+							textFieldOrder.setText(aszTmp[1]);
+						} else {
+							tstLogs.printErr("Order No. not found. Please inform ME.");
+						}
 						break;
 					case "SN":
-						textFieldSer.setText(aszTmp[1]);
+						if (aszTmp.length >= 2) {
+							textFieldSer.setText(aszTmp[1]);
+						} else {
+							tstLogs.printErr("Serial No. not found. Please inform ME.");
+						}
 						break;
 					case "PR_ID":
-						textFieldProd.setText(aszTmp[1]);
+						if (aszTmp.length >= 2) {
+							textFieldProd.setText(aszTmp[1]);
+						} else {
+							tstLogs.printErr("Cannot identify machine product line. Please inform ME.");
+						}
 						break;
 					case "MODEL":
-						textFieldModel.setText(aszTmp[1]);
+						if (aszTmp.length >= 2) {
+							textFieldModel.setText(aszTmp[1]);
+						} else {
+							tstLogs.printErr("Cannot identify machine model. Please inform ME.");
+						}
 						break;
 					default:
 						// do nothing
@@ -857,7 +884,7 @@ public class JDrain extends JFrame {
 			textFieldProd.getText().isEmpty() ||
 			textFieldModel.getText().isEmpty()) {
 			performSuspend();
-			return tstLogs.printErr("Failed to get WU info");
+			return tstLogs.printErr("Failed to get complete WU info.");
 		}
 		return updateNodeCnt();
 	} /** updateWorkUnitPanel - END */
@@ -1202,11 +1229,11 @@ public class JDrain extends JFrame {
 				}
 
 				//perform login
-				//if (performLogin() != tstLogs.PASS) {
-					//displayTxt("<html><font size=5 color=\"red\">Login Failed</font></html>");
-					//tstLogs.displayErrPopUpMessage("Failed to login.\nPlease try again.");
-					//return;
-				//}
+				if (performLogin() != tstLogs.PASS) {
+					displayTxt("<html><font size=5 color=\"red\">Login Failed</font></html>");
+					tstLogs.displayErrPopUpMessage("Failed to login.\nPlease try again.");
+					return;
+				}
 				if (performClaimIn(szWorkUnitNo) != tstLogs.PASS) {
 					displayTxt("<html><font size=5 color=\"red\"><center>Failed to claim in WU " + szWorkUnitNo.split(" ")[0] +
 							   ".<br><br>Please check if all info are correct and try again." +
@@ -1649,8 +1676,8 @@ public class JDrain extends JFrame {
 				btnStartTimer.setEnabled(false);
 
 				//get timer info
-				final long lMilliSeconds = 1000;//DBG 
-				//CGGfinal long lMilliSeconds = tstCtl.getTimer();
+				final long lMilliSeconds = 1000;//CGGDBG
+				//final long lMilliSeconds = tstCtl.getTimer();
 
 				final String szStartTime = TIMERFORMAT.format(new Date(lMilliSeconds));
 				tstLogs.printInfo("Starting countdown of " + szStartTime);

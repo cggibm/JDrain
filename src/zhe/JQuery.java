@@ -13,8 +13,7 @@ import java.sql.Statement;
 public class JQuery {
 	/** Constants */
 	private static String USER = "MDLOGIN";
-	//CGGprivate static String PASSFILE = "/home/gem/scripts/mfsqry";
-	private static String PASSFILE = "C:\\mfsqry";
+	private static String PASSFILE = "/home/gem/scripts/mfsqry";
 
 	/** Global variables */
 	private static String  szMfgn;
