@@ -1,3 +1,8 @@
+/*** JQuery.java
+ *   Query file
+ *   Created by: Carlo G. Gagui (gaguigc@sg.ibm.com)
+ */
+
 package zhe;
 
 import java.io.BufferedReader;
@@ -12,7 +17,7 @@ import java.sql.Statement;
 
 public class JQuery {
 	/** Constants */
-	private static String USER = "MDLOGIN";
+	private static String USER = "ZHESGPTE";
 	private static String PASSFILE = "/home/gem/scripts/mfsqry";
 
 	/** Global variables */

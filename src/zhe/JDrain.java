@@ -26,6 +26,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Iterator;
@@ -70,7 +72,7 @@ public class JDrain extends JFrame {
 	} // panels enum - END
 	
 	/** Constants */
-	private static String VERSION = "v1.20";
+	private static String VERSION = "v1.30";
 	private static String DUMMY = "DUMMY";
 	private static Font TITLE  = new Font("Tahoma", Font.BOLD, 14);
 	private static Font TSTLBL = new Font("Tahoma", Font.PLAIN, 8);
@@ -86,11 +88,11 @@ public class JDrain extends JFrame {
 	private static int MINMODELLEN  = 3;
 	private static int MINMFGNLEN   = 7;
 	private static int MINPRODLNLEN = 7;
+	private static long WARNINGTIME = 10000; // 10s
 
 	/** Command list */
 	private static String DEFAULTUSER = "reefuser";
 	private static String DEFAULTSRVR = "sgad06e0";
-	//private static String DEFAULTPC   = "drain01";
 	private static String DRAINCMD	= "/bin/bash /home/gem/scripts/drainHE.sh " + DEFAULTUSER + " " + DEFAULTSRVR;
 	private static String LOGINCMD	= " val_user";
 	private static String CLAIMINCMD  = "claim_in";
@@ -105,6 +107,7 @@ public class JDrain extends JFrame {
 	private static String CODELOC  = "/home/gem/scripts/";
 	private static String TESTSTAT = "claimedWU/teststat";
 	private static String INTROFILE= "0.PNG";
+	private static String IBMIMG = "IBM.PNG";
 
 	/** XML file variables */
 	private static String TAGSTEP = "step";
@@ -175,7 +178,7 @@ public class JDrain extends JFrame {
 		}
 
 		//set log font to medium at beginning
-		logFont = LOGFONTMEDIUM;
+		logFont = LOGFONTSMALL;
 
 		//set up logging file
 		Date date = new Date();
@@ -539,16 +542,32 @@ public class JDrain extends JFrame {
 		panelImg.removeAll();
 		panelImg.repaint();
 
+		//display test image
 		ImageIcon icon = new ImageIcon(szImg);
 		GridBagConstraints gbc = JGridConstraint.getDefaultObjectGbc(panels.DEFAULT);
+		panelImg.add(new JLabel(icon), gbc);
+
+		//display step number
 		JLabel lblTstNum = new JLabel(szImg.replace(tstCtl.getTstFileLoc() + SEPARATR, "").replace(".PNG", ""));
 		lblTstNum.setFont(TSTLBL);
-		panelImg.add(new JLabel(icon), gbc);
 		panelImg.add(lblTstNum);
-		//panelImg.validate();
-		//panelImg.repaint();
 		pack();
 	} /** displayImg - END */
+
+	/** Displays resource on image panel
+	 *  Input: szImg - image to be displayed
+	 **/
+	private void displayLogo(String szImg) {
+		//clear panelImg
+		panelImg.removeAll();
+		panelImg.repaint();
+
+		URL url = ((URLClassLoader) ClassLoader.getSystemClassLoader()).getResource(szImg);
+		ImageIcon icon = new ImageIcon(url);
+		GridBagConstraints gbc = JGridConstraint.getDefaultObjectGbc(panels.DEFAULT);
+		panelImg.add(new JLabel(icon), gbc);
+		pack();
+	} /** displayLogo - END */
 
 	/** Displays text on image panel
 	 *  Input: szTxt - text to be displayed
@@ -645,7 +664,8 @@ public class JDrain extends JFrame {
 
 		mnitmAbout.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				tstLogs.displayInfoPopUpMessage("JDrain Tool Version " + VERSION + ".");
+				tstLogs.displayInfoPopUpMessage("<html>JDrain Tool Version " + VERSION +
+						"<br><br><font size=1>Developed by Carlo Gagui & Shahril Selamat</font></html>");
 			}
 		});
 	} /** createMenuBar - END */
@@ -1253,10 +1273,11 @@ public class JDrain extends JFrame {
 					performSuspend();
 					return;
 				} else if (qry.isReapply()) {
-					String szMsg = "There are components detected for pending removal at op 0807. Please route MFS back to op 0807 to process the removal.";
+					String szMsg = "There are components detected for pending removal at OP 0807. Please route MFS back to op 0807 to process the removal.";
 					displayTxt(szMsg);
 					tstLogs.printErr(szMsg);
-					tstLogs.displayErrPopUpMessage(szMsg);
+					tstLogs.displayErrPopUpMessage("There are components detected for pending removal at OP 0807.\n"
+							+ "Please log in to MFS client and process the removal first. Once done, return to this application.");
 					performSuspend();
 					return;
 				}
@@ -1308,6 +1329,8 @@ public class JDrain extends JFrame {
 		//remove all images/text from panelImg
 		panelImg.removeAll();
 		panelImg.repaint();
+		//draw IBM logo
+		displayLogo(IBMIMG);
 
 		initializeNextPanel();
 		panelNext.setVisible(false);
@@ -1648,8 +1671,6 @@ public class JDrain extends JFrame {
 					}
 
 					initDrainPanel();
-					//panelTestCase.setVisible(false);
-					//panelStart.setVisible(false);
 					pack();
 					return;
 				}
@@ -1686,11 +1707,20 @@ public class JDrain extends JFrame {
 					long lLeftTime = lMilliSeconds - 1000;
 					public void actionPerformed(ActionEvent e) {
 						if (lLeftTime >= 0) {
+							if (lLeftTime <= WARNINGTIME) {
+								//if 10 seconds, change color to warning time
+								lblUpdateTimer.setFont(BOLD);
+								lblUpdateTimer.setForeground(Color.ORANGE);
+							} else {
+								lblUpdateTimer.setFont(PLAIN);
+								lblUpdateTimer.setForeground(Color.BLACK);
+							}
 							lblUpdateTimer.setText(TIMERFORMAT.format(new Date(lLeftTime)));
 							lLeftTime -= 1000;
 						} else {
 							tstLogs.printInfo("Countdown reached 00 : 00 which started from " + szStartTime);
 							((Timer) e.getSource()).stop();
+							lblUpdateTimer.setFont(BOLD);
 							lblUpdateTimer.setForeground(Color.RED);
 
 							//store info
@@ -1741,9 +1771,9 @@ public class JDrain extends JFrame {
 		btnFinish.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				btnFinish.setEnabled(false);
-				displayTxt("Test Done.");
-				tstLogs.displayInfoPopUpMessage("Test Done.\nSystem will be claimed out.");
-				tstLogs.printInfo("Drain process finished.");
+				displayTxt("Drain Operation Complete.");
+				tstLogs.displayInfoPopUpMessage("Drain Operation complete.\nSystem will be claimed out.");
+				tstLogs.printInfo("Drain process complete.");
 
 				//perform claim out
 				if (performClaimOut() != tstLogs.PASS) {
