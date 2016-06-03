@@ -17,7 +17,7 @@ import java.sql.Statement;
 
 public class JQuery {
 	/** Constants */
-	private static String USER = "ZHESGPTE";
+	private static String USER = "MDLOGIN";
 	private static String PASSFILE = "/home/gem/scripts/mfsqry";
 
 	/** Global variables */
