@@ -19,7 +19,9 @@ public class JScript {
     public static int run(String szCmd, JLogHandler logHandlr) throws IOException, InterruptedException {
     	logHandlr.printDbg("Running command: " + szCmd);
     	Runtime rt = Runtime.getRuntime();
-    	Process proc = rt.exec(szCmd);
+    	//setup command line to support bash
+    	Process proc = rt.exec(new String[]{"C:\\cygwin64\\bin\\bash.exe", "-c", "export DISPLAY=:0.0; " + szCmd},
+    			new String[]{"PATH=/cygdrive/c/cygwin64/bin"});
 
         //remove any output/error message
     	JStreamGobbler errorGobbler = new JStreamGobbler(proc.getErrorStream(), "ERROR", logHandlr);

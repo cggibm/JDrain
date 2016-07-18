@@ -5,20 +5,19 @@
 
 package zhe;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Scanner;
 
 public class JQuery {
 	/** Constants */
 	private static String USER = "MDLOGIN";
-	private static String PASSFILE = "/home/gem/scripts/mfsqry";
+	private static String PASSFILE = "https://www.dropbox.com/s/fulekve5hgxn0v8/mfsqry?dl=1";
 
 	/** Global variables */
 	private static String  szMfgn;
@@ -52,7 +51,7 @@ public class JQuery {
 			conn = DriverManager.getConnection(connectionUrl, connectionUser, connectionPassword);
 			stmt = conn.createStatement();
 			rs = stmt.executeQuery("SELECT CRMFGN, CRIDSP FROM MFS2P010A.FCSPCR10 WHERE CRMFGN='" + szMfgn + "' AND CRNMBR='0807' AND CRIDSP='R'");
-			if (rs.next()) {
+			if ((rs != null) && (rs.next())) {
 				log.printInfo("System is a reapply order.");
 				bIsReapply = true;
 			}
@@ -85,17 +84,17 @@ public class JQuery {
      **/
 	private static String getPassword() {
 		String szPass = null;
-    	File file = new File(PASSFILE);
-    	if (file.exists()) {
-    		BufferedReader br = null;
-    		try {
-    			br = new BufferedReader(new FileReader(PASSFILE));
-    			szPass = br.readLine();
-			} catch (IOException ex) {
-				szPass = null;
-				log.printErr("Exception encountered while performing query. Will ignore reapply check Please inform ME!", ex);
-			}
-    	}
+		URL url = null;
+		try {
+			url = new URL(PASSFILE);
+			Scanner s = new Scanner(url.openStream());
+			szPass = s.nextLine();
+			s.close();
+		} catch (IOException ex) {
+			szPass = null;
+			log.printErr("Exception encountered while performing query. Will ignore reapply check Please inform ME!", ex);
+		}
+
     	return szPass;
 	} /** getPassword - END */
 }

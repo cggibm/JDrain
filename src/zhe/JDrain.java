@@ -36,6 +36,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import javax.swing.Action;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -72,7 +73,7 @@ public class JDrain extends JFrame {
 	} // panels enum - END
 	
 	/** Constants */
-	private static String VERSION = "v1.30";
+	private static String VERSION = "v1.40";
 	private static String DUMMY = "DUMMY";
 	private static Font TITLE  = new Font("Tahoma", Font.BOLD, 14);
 	private static Font TSTLBL = new Font("Tahoma", Font.PLAIN, 8);
@@ -85,15 +86,13 @@ public class JDrain extends JFrame {
 	private static boolean ISHYBRID  = true;
 	private static int MINWORKUNITLEN = 8;
 	private static int MINDRAINSTLEN  = 3;
-	private static int MINMODELLEN  = 3;
-	private static int MINMFGNLEN   = 7;
 	private static int MINPRODLNLEN = 7;
 	private static long WARNINGTIME = 10000; // 10s
+	private static double VALIDJAVAVER = 1.7;
 
 	/** Command list */
 	private static String DEFAULTUSER = "reefuser";
 	private static String DEFAULTSRVR = "sgad06e0";
-	private static String DRAINCMD	= "/bin/bash /home/gem/scripts/drainHE.sh " + DEFAULTUSER + " " + DEFAULTSRVR;
 	private static String LOGINCMD	= " val_user";
 	private static String CLAIMINCMD  = "claim_in";
 	private static String CLAIMOUTCMD = "claim_out";
@@ -101,11 +100,22 @@ public class JDrain extends JFrame {
 	private static String STEPSTART   = "stepStart";
 	private static String STEPDATA	= "stepData";
 	private static String STEPEND	 = "stepEnd";
+	
+	/** OS-specific */
+	//Windows
+	private static String WINUSER = "Orchid";
+	private static String WINSEPARATR = "\\";
+	private static String WINCODELOC  = "C:\\cygwin64\\home\\Orchid\\scripts\\";
+	private static String WINTESTSTAT = "claimedWU\\teststat";
+	private static String WINDRAINCMD = "/bin/bash /home/Orchid/scripts/drainHE.sh " + DEFAULTUSER + " " + DEFAULTSRVR;
+	//Linux
+	private static String LINUSER = "gem";
+	private static String LINSEPARATR = "/";
+	private static String LINCODELOC  = "/home/gem/scripts/";
+	private static String LINTESTSTAT = "claimedWU/teststat";
+	private static String LINDRAINCMD = "/bin/bash /home/gem/scripts/drainHE.sh " + DEFAULTUSER + " " + DEFAULTSRVR;
 
 	/** Files to read */
-	private static String SEPARATR = "/";
-	private static String CODELOC  = "/home/gem/scripts/";
-	private static String TESTSTAT = "claimedWU/teststat";
 	private static String INTROFILE= "0.PNG";
 	private static String IBMIMG = "IBM.PNG";
 
@@ -130,6 +140,12 @@ public class JDrain extends JFrame {
 	private static JTestCaseControl tstCtl;
 	private static JLogHandler tstLogs;
 	private Font logFont;
+	//OS specific variables
+	private static String szUser;
+	private static String szSeparatr;
+	private static String szCodeLoc;
+	private static String szTeststat;
+	private static String szDrainCmd;
 
 	/**
 	 * Launch the application.
@@ -172,8 +188,13 @@ public class JDrain extends JFrame {
 		gblContentPane.columnWeights = new double[]{2};
 		contentPane.setLayout(gblContentPane);
 
-		if (!isValidOS()) {
-			JOptionPane.showMessageDialog(null, "Cannot run application in current PC", "Error", JOptionPane.ERROR_MESSAGE);
+		if (!isValidJava()) {
+			JOptionPane.showMessageDialog(null, "Please install Java version " + VALIDJAVAVER + " or greater.", "Error", JOptionPane.ERROR_MESSAGE);
+			System.exit(0);
+		}
+		prepareOSSpecificVar();
+		if ((szUser == null) || (szUser.isEmpty())) {
+			JOptionPane.showMessageDialog(null, "Current OS is not supported. Please use either Windows or Linux", "Error", JOptionPane.ERROR_MESSAGE);
 			System.exit(0);
 		}
 
@@ -183,7 +204,7 @@ public class JDrain extends JFrame {
 		//set up logging file
 		Date date = new Date();
 		String szFileDate = new SimpleDateFormat("yyyyMMddHHmmss").format(date);
-		tstLogs = new JLogHandler(CODELOC + szFileDate + ".TXT");
+		tstLogs = new JLogHandler(szCodeLoc + szFileDate + ".TXT");
 
 		//setup flags
 		bIsClaimedIn = !CLAIMEDIN;
@@ -195,20 +216,35 @@ public class JDrain extends JFrame {
 		pack();
 	} /** JDrain - END */
 
-	/** Checks if OS is valid
+	/** Checks if valid Java is installed
 	 *  Output: true  - valid
-	 *		  false - not valid
+	 *		    false - not valid
 	 */
-	private boolean isValidOS() {
-		boolean bRet = false;
-		//check if Linux
-		String szOS = System.getProperty("os.name").toUpperCase().trim();
-		if ((szOS.length() > 0) && (szOS.contains("LINUX")) &&
-			(Double.parseDouble(System.getProperty("java.specification.version")) >= 1.7)) {
-			bRet = true;
+	private boolean isValidJava() {
+		if (Double.parseDouble(System.getProperty("java.specification.version")) >= VALIDJAVAVER) {
+			return true;
 		}
-		return bRet;
-	} /** isValidOS - END */
+		return false;
+	} /** isValidJava - END */
+
+	/** Prepares OS-specific variables */
+	private void prepareOSSpecificVar() {
+		String szOS = System.getProperty("os.name").toUpperCase().trim();
+		if (szOS.contains("LINUX")) {
+			szUser     = LINUSER;
+			szSeparatr = LINSEPARATR;
+			szCodeLoc  = LINCODELOC;
+			szTeststat = LINTESTSTAT;
+			szDrainCmd = LINDRAINCMD;
+		} else if (szOS.contains("WINDOWS")) {
+			szUser     = WINUSER;
+			szSeparatr = WINSEPARATR;
+			szCodeLoc  = WINCODELOC;
+			//szCodeLoc  = "C:\\Users\\gaguigc\\Documents\\_Project\\DRAIN\\";//CGG
+			szTeststat = WINTESTSTAT;
+			szDrainCmd = WINDRAINCMD;
+		}
+	} /** prepareOSSpecificVar - END */
 
 	/** Runs command
 	 *  Input : szCmd - command to run
@@ -254,7 +290,7 @@ public class JDrain extends JFrame {
 	private int performLogin() {
 		//call script to login
 		tstLogs.printInfo("Logging IN.");
-		if (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + LOGINCMD) != 0) {
+		if (runScript(szDrainCmd + " " + textFieldDrainSt.getText() + LOGINCMD) != 0) {
 			return tstLogs.printErr("Logging in failed");
 		}
 		return tstLogs.PASS;
@@ -270,14 +306,14 @@ public class JDrain extends JFrame {
 		//call script to claim-in
 		int iRet = tstLogs.PASS;
 		if (bIsHybrid) {
-			if (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + szWorkUnit) != 0) {
+			if (runScript(szDrainCmd + " " + textFieldDrainSt.getText() + " " + szWorkUnit) != 0) {
 				return tstLogs.printErr("Claim IN failed");
 			}
 			iRet = updateNodeCnt();
 		} else {
 			displayTxt("Claiming IN");
 			tstLogs.displayInfoPopUpMessage("Will claim in WU.\nDo not close the application.");
-			if (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + CLAIMINCMD + " " + szWorkUnit) != 0) {
+			if (runScript(szDrainCmd + " " + textFieldDrainSt.getText() + " " + CLAIMINCMD + " " + szWorkUnit) != 0) {
 				return tstLogs.printErr("Claim IN failed");
 			}
 			iRet = updateWorkUnitPanel();
@@ -295,9 +331,9 @@ public class JDrain extends JFrame {
 		if (bIsClaimedIn) {
 			tstLogs.printInfo("Performing MFS Claim-OUT for WU " + textFieldWorkUnit.getText());
 			//call script to claim-out
-			String szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + CLAIMOUTCMD;
+			String szScript = szDrainCmd + " " + textFieldDrainSt.getText() + " " + CLAIMOUTCMD;
 			if (bIsHybrid) {
-				szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + "DUMMYEND";
+				szScript = szDrainCmd + " " + textFieldDrainSt.getText() + " " + "DUMMYEND";
 			}
 
 			if (runScript(szScript) != 0) {
@@ -318,9 +354,9 @@ public class JDrain extends JFrame {
 
 			tstLogs.printInfo("Performing MFS suspend for WU " + textFieldWorkUnit.getText());
 			//call script to suspend
-			String szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + SUSPEND;
+			String szScript = szDrainCmd + " " + textFieldDrainSt.getText() + " " + SUSPEND;
 			if (bIsHybrid) {
-				szScript = DRAINCMD + " " + textFieldDrainSt.getText() + " " + "DUMMYEND";
+				szScript = szDrainCmd + " " + textFieldDrainSt.getText() + " " + "DUMMYEND";
 			}
 
 			if (runScript(szScript) != 0) {
@@ -340,7 +376,7 @@ public class JDrain extends JFrame {
 		String szStepName = "N" + tstCtl.getCurrentNodeCnt() + "S" + tstCtl.getOpCnt();
 		tstLogs.printInfo("Performing Step Start " + szStepName);
 		
-		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPSTART + " " + szStepName + " " + szStepName) != 0)) {
+		if ((bIsClaimedIn) && (runScript(szDrainCmd + " " + textFieldDrainSt.getText() + " " + STEPSTART + " " + szStepName + " " + szStepName) != 0)) {
 			return tstLogs.printErr("Step start failed");
 		}
 		return tstLogs.PASS;
@@ -350,7 +386,7 @@ public class JDrain extends JFrame {
 	private static int performStepEnd() {
 		tstLogs.printInfo("Performing Step End");
 		//call script to step end
-		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPEND) != 0)) {
+		if ((bIsClaimedIn) && (runScript(szDrainCmd + " " + textFieldDrainSt.getText() + " " + STEPEND) != 0)) {
 			return tstLogs.printErr("Step End failed");
 		}
 		return tstLogs.PASS;
@@ -363,7 +399,7 @@ public class JDrain extends JFrame {
 		String szTrimmedData = szData.replaceAll("\\s","");
 		tstLogs.printInfo("Performing Step Data " + szTrimmedData);
 		//call script to step data
-		if ((bIsClaimedIn) && (runScript(DRAINCMD + " " + textFieldDrainSt.getText() + " " + STEPDATA + " " + szTrimmedData) != 0)) {
+		if ((bIsClaimedIn) && (runScript(szDrainCmd + " " + textFieldDrainSt.getText() + " " + STEPDATA + " " + szTrimmedData) != 0)) {
 			return tstLogs.printErr("Step Data failed");
 		}
 		return tstLogs.PASS;
@@ -414,10 +450,16 @@ public class JDrain extends JFrame {
 	 */
 	private int initTestCase() {
 		//get product line
-		String szProdLn = textFieldProd.getText();
+		String szProdLn;
+		if (bIsHybrid) {
+			JComboItem item = (JComboItem)comboProductIdList.getSelectedItem();
+			szProdLn = item.getDesc();
+		} else {
+			szProdLn = textFieldProd.getText();
+		}
 		tstLogs.printDbg("Init test cases for ProdLn = " + szProdLn);
 
-		String szProdLnDir = CODELOC + szProdLn;
+		String szProdLnDir = szCodeLoc + szProdLn;
 		File dirProd = new File(szProdLnDir);
 		if (!dirProd.exists() && !dirProd.isDirectory()) {
 			return tstLogs.printErr(szProdLnDir + " directory missing.");
@@ -447,7 +489,7 @@ public class JDrain extends JFrame {
 	 *		  0 - pass
 	 */
 	private int getTestCaseDetails(String szXmlTag, String szProdLnDir, String szProdLn) {
-		String szXmlFile = szProdLnDir + SEPARATR + szProdLn + ".xml";
+		String szXmlFile = szProdLnDir + szSeparatr + szProdLn + ".xml";
 		//check if XML file exists
 		File fXmlFile = new File(szXmlFile);
 		if (!fXmlFile.exists()) {
@@ -489,7 +531,16 @@ public class JDrain extends JFrame {
 					Node nNode = nList.item(iIter);
 					if (nNode.getNodeType() == Node.ELEMENT_NODE) {
 						Element eElement = (Element) nNode;
-						if (eElement.getAttribute(MODEL).contains(textFieldModel.getText())) {
+						
+						String szModel;
+						if (bIsHybrid) {
+							JComboItem item = (JComboItem)comboModelList.getSelectedItem();
+							szModel = item.getDesc();
+						} else {
+							szModel = textFieldModel.getText();
+						}
+
+						if (eElement.getAttribute(MODEL).contains(szModel)) {
 							textFieldNodeCnt.setText(eElement.getElementsByTagName(NODECNT).item(0).getTextContent());
 							break;
 						}
@@ -504,6 +555,45 @@ public class JDrain extends JFrame {
 
 		return tstLogs.PASS;
 	} /** getTestCaseDetails - END */
+
+	/** Get model list from XML file
+	 *  Input : szProdLnDir - directory for the images to be displayed
+	 *		    szProdLn	- product line
+	 *  Output: error code - if error is encountered
+	 *		    0 - pass
+	 */
+	private int getModelList(JComboBox<JComboItem> comboModelList, String szProdId) {
+		String szXmlFile = szCodeLoc + szProdId + szSeparatr + szProdId + ".xml";
+		//check if XML file exists
+		File fXmlFile = new File(szXmlFile);
+		if (!fXmlFile.exists()) {
+			return tstLogs.printErr(szXmlFile + " is missing");
+		}
+
+		try {
+			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+			Document doc = dBuilder.parse(fXmlFile);
+
+			//optional, but recommended
+			doc.getDocumentElement().normalize();
+
+			NodeList nList = null;
+			nList = doc.getElementsByTagName(TAGNODE);
+			//loop through the XML file
+			for (int iIter = 0; iIter < nList.getLength(); iIter++) {
+				Node nNode = nList.item(iIter);
+				if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+					Element eElement = (Element)nNode;
+					comboModelList.addItem(new JComboItem(eElement.getAttribute(MODEL)));
+				}
+			} // for loop - END
+		} catch (Exception ex) {
+			return tstLogs.printErr("Exception encountered while getting operation details.", ex);
+		}
+
+		return tstLogs.PASS;
+	} /** getModelList - END */
 
 	/** Draws the test case images
 	 *  Input: step info */
@@ -524,7 +614,7 @@ public class JDrain extends JFrame {
 	 **/
 	private int drawTestCase(int iCurrOp) {
 		//display current step for current node
-		String szOpImgToDisp = tstCtl.getTstFileLoc() + SEPARATR + iCurrOp + ".PNG";
+		String szOpImgToDisp = tstCtl.getTstFileLoc() + szSeparatr + iCurrOp + ".PNG";
 		if (new File(szOpImgToDisp).exists()) {
 			displayImg(szOpImgToDisp);
 		} else {
@@ -548,7 +638,7 @@ public class JDrain extends JFrame {
 		panelImg.add(new JLabel(icon), gbc);
 
 		//display step number
-		JLabel lblTstNum = new JLabel(szImg.replace(tstCtl.getTstFileLoc() + SEPARATR, "").replace(".PNG", ""));
+		JLabel lblTstNum = new JLabel(szImg.replace(tstCtl.getTstFileLoc() + szSeparatr, "").replace(".PNG", ""));
 		lblTstNum.setFont(TSTLBL);
 		panelImg.add(lblTstNum);
 		pack();
@@ -813,8 +903,15 @@ public class JDrain extends JFrame {
 	 *		  0 - pass
 	 */
 	private int updateNodeCnt() {
-		String szProdLn = textFieldProd.getText();
-		if ((getTestCaseDetails(TAGNODE, CODELOC + szProdLn, szProdLn) != tstLogs.PASS) ||
+		String szProdLn;
+		if (bIsHybrid) {
+			JComboItem item = (JComboItem)comboProductIdList.getSelectedItem();
+			szProdLn = item.getDesc();
+		} else {
+			szProdLn = textFieldProd.getText();
+		}
+
+		if ((getTestCaseDetails(TAGNODE, szCodeLoc + szProdLn, szProdLn) != tstLogs.PASS) ||
 			(textFieldNodeCnt.getText().isEmpty())) {
 			performSuspend();
 			return tstLogs.printErr("Failed to get node count.");
@@ -830,7 +927,7 @@ public class JDrain extends JFrame {
 		String[] aszTmp;
 		BufferedReader in = null;
 		try {
-			String szTmp = System.getProperty("user.dir") + SEPARATR + TESTSTAT;
+			String szTmp = new File(".").getAbsolutePath() + szTeststat;
 			if (!new File(szTmp).exists()) {
 				tstLogs.printErr("Missing teststat file. Claim-IN failed. Please inform ME.");
 				return tstLogs.ERROR;
@@ -932,6 +1029,16 @@ public class JDrain extends JFrame {
 		textFieldProd.setText("");
 		textFieldModel.setText("");
 		textFieldNodeCnt.setText("");
+		textFieldProd.setVisible(true);
+		textFieldModel.setVisible(true);
+		
+		comboProductIdList.removeAllItems();
+		comboProductIdList.setEnabled(true);
+		comboProductIdList.setVisible(false);
+
+		comboModelList.removeAllItems();
+		comboModelList.setEnabled(true);
+		comboModelList.setVisible(false);
 	} /** initWorkUnitPanel - END */
 
 	private JPanel panelWorkUnit;
@@ -943,6 +1050,8 @@ public class JDrain extends JFrame {
 	private static JTextField textFieldProd;
 	private static JTextField textFieldModel;
 	private static JTextField textFieldNodeCnt;
+	private static JComboBox<JComboItem> comboProductIdList;
+	private static JComboBox<JComboItem> comboModelList;
 	private static JRadioButton rdbtnPrime;
 	private static JRadioButton rdbtnHybrid;
 	private JButton btnEnter;
@@ -1000,7 +1109,7 @@ public class JDrain extends JFrame {
 
 		//POK hybrid radio button
 		gbcWU.gridx = 5;
-		rdbtnHybrid = new JRadioButton("POK Hybrid");
+		rdbtnHybrid = new JRadioButton("POK GARS");
 		rdbtnHybrid.setFont(PLAIN);
 		rdbtnHybrid.setToolTipText("Select if Machine is POK Hybrid. (NO MFS)");
 		rdbtnHybrid.setSelected(false);
@@ -1092,8 +1201,15 @@ public class JDrain extends JFrame {
 		textFieldProd.setFont(PLAIN);
 		textFieldProd.setColumns(10);
 		textFieldProd.setToolTipText("Will be updated after work unit is entered.");
+		textFieldProd.setVisible(true);
 		createPopUpMenu(textFieldProd);
 		panelWorkUnit.add(textFieldProd, gbcProdField);
+
+		comboProductIdList = new JComboBox<JComboItem>();
+		comboProductIdList.setFont(PLAIN);
+		comboProductIdList.setToolTipText("Select correct product ID.");
+		comboProductIdList.setVisible(false);
+		panelWorkUnit.add(comboProductIdList, gbcProdField);
 
 		//model
 		GridBagConstraints gbcModel = JGridConstraint.getDefaultObjectGbc(panels.WORKUNIT);
@@ -1111,8 +1227,15 @@ public class JDrain extends JFrame {
 		textFieldModel.setFont(PLAIN);
 		textFieldModel.setColumns(10);
 		textFieldModel.setToolTipText("Will be updated after work unit is entered.");
+		textFieldModel.setVisible(true);
 		createPopUpMenu(textFieldModel);
 		panelWorkUnit.add(textFieldModel, gbcModelField);
+
+		comboModelList = new JComboBox<JComboItem>();
+		comboModelList.setFont(PLAIN);
+		comboModelList.setToolTipText("Select correct model.");
+		comboModelList.setVisible(false);
+		panelWorkUnit.add(comboModelList, gbcModelField);
 
 		//node count
 		GridBagConstraints gbcNodeCnt = JGridConstraint.getDefaultObjectGbc(panels.WORKUNIT);
@@ -1134,6 +1257,17 @@ public class JDrain extends JFrame {
 		panelWorkUnit.add(textFieldNodeCnt, gbcNodeCntField);
 
 		//create action listeners
+		comboProductIdList.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if (comboProductIdList.getItemCount() > 0) {
+					JComboItem item = (JComboItem)comboProductIdList.getSelectedItem();
+					String szProdId = item.getDesc();
+					comboModelList.removeAllItems();
+					getModelList(comboModelList, szProdId);
+				}				
+			}
+		});
+
 		rdbtnPrime.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				tstLogs.printInfo("Prime Selected");
@@ -1146,11 +1280,10 @@ public class JDrain extends JFrame {
 				textFieldWorkUnit.setText("");
 
 				//for prime, entries will be taken from MFS
-				textFieldMfgn.setEditable(false);
-				textFieldOrder.setEditable(false);
-				textFieldSer.setEditable(false);
-				textFieldProd.setEditable(false);
-				textFieldModel.setEditable(false);
+				textFieldProd.setVisible(true);
+				comboProductIdList.setVisible(false);
+				textFieldModel.setVisible(true);
+				comboModelList.setVisible(false);
 				textFieldMfgn.setText("");
 				textFieldOrder.setText("");
 				textFieldSer.setText("");
@@ -1171,13 +1304,19 @@ public class JDrain extends JFrame {
 				//for hybrid, work unit is always set to DUMMY
 				textFieldWorkUnit.setText(DUMMY);
 				textFieldWorkUnit.setEditable(false);
+				textFieldMfgn.setText("0123456");
+				textFieldOrder.setText("123456");
+				textFieldSer.setText("12345");
 
-				//for hybrid, all entries will be manually entered
-				textFieldMfgn.setEditable(true);
-				textFieldOrder.setEditable(true);
-				textFieldSer.setEditable(true);
-				textFieldProd.setEditable(true);
-				textFieldModel.setEditable(true);
+				//for hybrid, some entries will be entered manually
+				textFieldProd.setVisible(false);
+				comboProductIdList.setVisible(true);
+				textFieldModel.setVisible(false);
+				comboModelList.setVisible(true);
+
+				comboProductIdList.removeAllItems();
+				comboModelList.removeAllItems();
+				insertAllProdId(comboProductIdList);
 			}
 		});
 
@@ -1217,34 +1356,18 @@ public class JDrain extends JFrame {
 				//for hybrid check if all fields are not empty
 				if (bIsHybrid) {
 					String szMfgn  = textFieldMfgn.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
-					textFieldMfgn.setText(szMfgn);
 					String szOrno  = textFieldOrder.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
-					textFieldOrder.setText(szOrno);
 					String szSerNo = textFieldSer.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
-					textFieldSer.setText(szSerNo);
-					String szProd  = textFieldProd.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
-					textFieldProd.setText(szProd);
-					String szModel = textFieldModel.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
-					textFieldModel.setText(szModel);
-					if (szMfgn.isEmpty() || szOrno.isEmpty() || szSerNo.isEmpty() ||
-						szProd.isEmpty() || szModel.isEmpty()) {
-						tstLogs.displayErrPopUpMessage("Please fill up all fields since order is not in MFS.");
-						return;
-					}
-					//check length of product line and model if correct
-					if (szProd.length() != MINPRODLNLEN) {
-						tstLogs.displayErrPopUpMessage("Please enter a correct product line.");
-						return;
-					}
-					if (szModel.length() != MINMODELLEN) {
-						tstLogs.displayErrPopUpMessage("Please enter a correct product model.");
-						return;
-					}
-					if (szMfgn.length() != MINMFGNLEN) {
-						tstLogs.displayErrPopUpMessage("Please enter a correct MFGN.");
-						return;
-					}
 
+					JComboItem item = (JComboItem)comboProductIdList.getSelectedItem();
+					String szProd  = item.getDesc().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
+					item = (JComboItem)comboModelList.getSelectedItem();
+					String szModel = item.getDesc().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
+
+					if (szProd.isEmpty() || szModel.isEmpty() || (szProd.length() != MINPRODLNLEN)) {
+						tstLogs.displayErrPopUpMessage("Invalid product ID. Please try again.");
+						return;
+					}
 					szWorkUnitNo = szWorkUnitNo + " " + szProd + " " + szModel + " " + szSerNo + " " + szOrno + " " + szMfgn;
 				}
 
@@ -1281,6 +1404,7 @@ public class JDrain extends JFrame {
 					performSuspend();
 					return;
 				}
+				tstLogs.printInfo("Reapply query done.");
 
 				//disable all clickables
 				textFieldWorkUnit.setEditable(false);
@@ -1288,14 +1412,11 @@ public class JDrain extends JFrame {
 				rdbtnHybrid.setEnabled(false);
 				rdbtnPrime.setEnabled(false);
 				btnEnter.setVisible(false);
-				if (bIsHybrid) {
-					textFieldMfgn.setEditable(false);
-					textFieldOrder.setEditable(false);
-					textFieldSer.setEditable(false);
-					textFieldProd.setEditable(false);
-					textFieldModel.setEditable(false);
-				}
 				prepareDrainRunPanels();
+				if (bIsHybrid) {
+					comboProductIdList.setEnabled(false);
+					comboModelList.setEnabled(false);
+				}
 
 				//initialize test case
 				if (initTestCase() != tstLogs.PASS) {
@@ -1443,11 +1564,29 @@ public class JDrain extends JFrame {
 		});
 	} /** createTestLogsPanel - END */
 
+	/** Inserts all product ID and adds in the given combo box
+	 *  Input: szProdLnDir - product line directory
+	 */
+	private static void insertAllProdId(JComboBox<JComboItem> comboProductIdList) {
+		//get all the directory starting in '2' in the scripts folder
+		File dir = new File(szCodeLoc);
+		File[] files = dir.listFiles();
+		if (files.length == 0) {
+		    System.out.println("The directory is empty.");
+		} else {
+		    for (File aFile : files) {
+		    	if (aFile.isDirectory() && (aFile.getName().startsWith("2"))) {
+		    		comboProductIdList.addItem(new JComboItem(aFile.getName()));
+		    	}
+		    }
+		}
+	} /** insertAllProdId - END */
+
 	/** Initialize next panel
 	 *  Input: szProdLnDir - product line directory */
 	private void initializeTestCaseImgPanel(String szProdLnDir) {
 		//if the product line folder has an intro message (usually in 0.PNG), display
-		String szIntroFile = szProdLnDir + SEPARATR + INTROFILE;
+		String szIntroFile = szProdLnDir + szSeparatr + INTROFILE;
 		if (new File(szIntroFile).exists()) {
 			displayImg(szIntroFile);
 		} else {
@@ -1500,6 +1639,7 @@ public class JDrain extends JFrame {
 		TIMERFORMAT.setTimeZone(java.util.TimeZone.getTimeZone("GMT"));
 		lblUpdateTimer.setText(TIMERFORMAT.format(new Date(lMilliSeconds)));
 		lblUpdateTimer.setForeground(Color.BLACK);
+		lblUpdateTimer.setFont(PLAIN);
 		lblUpdateTimer.setVisible(true);
 		btnStartTimer.setVisible(true);
 		btnStartTimer.setEnabled(true);
@@ -2062,3 +2202,31 @@ class JSelectAction extends TextAction {
 		getFocusedComponent().selectAll();
 	} /** actionPerformed - END */
 } // JSelectAction - END 
+
+/*** Class used for combo box items 
+ **/
+class JComboItem {
+   public String szDesc;
+
+	/** JComboItem constructor
+	 *  Input: szDesc - combo box item description
+	 */
+   public JComboItem(String szDesc) {
+       this.szDesc = szDesc;
+   } /** JComboItem - END */
+
+	/** Used to overwrite toString method that is used to know what text to display in combo box
+	 *  Output: szDesc - string that describes what the link is about
+	 */
+   @Override
+   public String toString() {
+       return szDesc;
+   } /** toString - END */
+
+	/** Get the description of the link data
+	 *  Output: the description to be displayed by a renderer
+	 */
+    public String getDesc() {
+    	return szDesc;
+    } /** getDesc - END */
+} // JComboItem - END

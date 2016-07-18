@@ -27,7 +27,7 @@ class JLogHandler {
 	public final int PASS  =  0;
 
 	private final static DateFormat DF = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-	private final static int DBGON = 0;
+	private final static int DBGON = 0; //CGG
 
 	//global variables
 	private static String szFile;
