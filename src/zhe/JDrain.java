@@ -146,6 +146,7 @@ public class JDrain extends JFrame {
 	private static String szCodeLoc;
 	private static String szTeststat;
 	private static String szDrainCmd;
+	private static boolean bIsWindows;
 
 	/**
 	 * Launch the application.
@@ -236,6 +237,7 @@ public class JDrain extends JFrame {
 			szCodeLoc  = LINCODELOC;
 			szTeststat = LINTESTSTAT;
 			szDrainCmd = LINDRAINCMD;
+			bIsWindows = false;
 		} else if (szOS.contains("WINDOWS")) {
 			szUser     = WINUSER;
 			szSeparatr = WINSEPARATR;
@@ -243,6 +245,7 @@ public class JDrain extends JFrame {
 			//szCodeLoc  = "C:\\Users\\gaguigc\\Documents\\_Project\\DRAIN\\";//CGG
 			szTeststat = WINTESTSTAT;
 			szDrainCmd = WINDRAINCMD;
+			bIsWindows = true;
 		}
 	} /** prepareOSSpecificVar - END */
 
@@ -254,7 +257,7 @@ public class JDrain extends JFrame {
 	private static int runScript(String szCmd) {
 		int iRet = tstLogs.PASS;
 		try {
-			iRet = JScript.run(szCmd, tstLogs);
+			iRet = JScript.run(bIsWindows, szCmd, tstLogs);
 			switch (iRet) {
 			case 11:
 				tstLogs.printErr("MFS: Workunit is NOT valid or is NOT in the correct OP 0807.");
@@ -927,7 +930,9 @@ public class JDrain extends JFrame {
 		String[] aszTmp;
 		BufferedReader in = null;
 		try {
-			String szTmp = new File(".").getAbsolutePath() + szTeststat;
+			String szTmp = new File(".").getAbsolutePath();
+			szTmp = szTmp.charAt(szTmp.length() - 1) == '.' ? szTmp.substring(0, szTmp.length() - 1) : szTmp;
+			szTmp = szTmp + szTeststat;
 			if (!new File(szTmp).exists()) {
 				tstLogs.printErr("Missing teststat file. Claim-IN failed. Please inform ME.");
 				return tstLogs.ERROR;

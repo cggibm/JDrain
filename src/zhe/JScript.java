@@ -13,15 +13,22 @@ import java.io.PrintWriter;
 
 public class JScript {
 	/** Runs shell commands
-	 *  Input:  szCmd - command to run
+	 *  Input:  bIsWindows - flag to check if running on Windows
+	 *  	    szCmd - command to run
+	 *          logHandlr - handle to JLogHandler class
 	 *  Output: 0 if pass; other if otherwise
 	 */
-    public static int run(String szCmd, JLogHandler logHandlr) throws IOException, InterruptedException {
+    public static int run(boolean bIsWindows, String szCmd, JLogHandler logHandlr) throws IOException, InterruptedException {
     	logHandlr.printDbg("Running command: " + szCmd);
     	Runtime rt = Runtime.getRuntime();
     	//setup command line to support bash
-    	Process proc = rt.exec(new String[]{"C:\\cygwin64\\bin\\bash.exe", "-c", "export DISPLAY=:0.0; " + szCmd},
+    	Process proc;
+    	if (bIsWindows) {
+    		proc = rt.exec(new String[]{"C:\\cygwin64\\bin\\bash.exe", "-c", "export DISPLAY=:0.0; " + szCmd},
     			new String[]{"PATH=/cygdrive/c/cygwin64/bin"});
+    	} else {
+    		proc = rt.exec(szCmd);
+    	}
 
         //remove any output/error message
     	JStreamGobbler errorGobbler = new JStreamGobbler(proc.getErrorStream(), "ERROR", logHandlr);
