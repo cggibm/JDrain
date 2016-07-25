@@ -100,20 +100,18 @@ public class JDrain extends JFrame {
 	private static String STEPSTART   = "stepStart";
 	private static String STEPDATA	= "stepData";
 	private static String STEPEND	 = "stepEnd";
+	private static String BASH = "/bin/bash ";
+	private static String DRAINCMD = "drainHE.sh " + DEFAULTUSER + " " + DEFAULTSRVR;
 	
 	/** OS-specific */
 	//Windows
-	private static String WINUSER = "Orchid";
 	private static String WINSEPARATR = "\\";
-	private static String WINCODELOC  = "C:\\cygwin64\\home\\Orchid\\scripts\\";
+	private static String WINCODELOC  = "scripts\\";
 	private static String WINTESTSTAT = "claimedWU\\teststat";
-	private static String WINDRAINCMD = "/bin/bash /home/Orchid/scripts/drainHE.sh " + DEFAULTUSER + " " + DEFAULTSRVR;
 	//Linux
-	private static String LINUSER = "gem";
 	private static String LINSEPARATR = "/";
-	private static String LINCODELOC  = "/home/gem/scripts/";
+	private static String LINCODELOC  = "scripts/";
 	private static String LINTESTSTAT = "claimedWU/teststat";
-	private static String LINDRAINCMD = "/bin/bash /home/gem/scripts/drainHE.sh " + DEFAULTUSER + " " + DEFAULTSRVR;
 
 	/** Files to read */
 	private static String INTROFILE= "0.PNG";
@@ -141,7 +139,7 @@ public class JDrain extends JFrame {
 	private static JLogHandler tstLogs;
 	private Font logFont;
 	//OS specific variables
-	private static String szUser;
+	private static String szWorkingDir;
 	private static String szSeparatr;
 	private static String szCodeLoc;
 	private static String szTeststat;
@@ -194,7 +192,7 @@ public class JDrain extends JFrame {
 			System.exit(0);
 		}
 		prepareOSSpecificVar();
-		if ((szUser == null) || (szUser.isEmpty())) {
+		if ((szCodeLoc == null) || (szCodeLoc.isEmpty())) {
 			JOptionPane.showMessageDialog(null, "Current OS is not supported. Please use either Windows or Linux", "Error", JOptionPane.ERROR_MESSAGE);
 			System.exit(0);
 		}
@@ -232,19 +230,22 @@ public class JDrain extends JFrame {
 	private void prepareOSSpecificVar() {
 		String szOS = System.getProperty("os.name").toUpperCase().trim();
 		if (szOS.contains("LINUX")) {
-			szUser     = LINUSER;
+			szWorkingDir = new File(".").getAbsolutePath();
+			szWorkingDir = szWorkingDir.charAt(szWorkingDir.length() - 1) == '.' ? szWorkingDir.substring(0, szWorkingDir.length() - 1) : szWorkingDir;
 			szSeparatr = LINSEPARATR;
-			szCodeLoc  = LINCODELOC;
-			szTeststat = LINTESTSTAT;
-			szDrainCmd = LINDRAINCMD;
+			szCodeLoc  = szWorkingDir + LINCODELOC;
+			szTeststat = szWorkingDir + LINTESTSTAT;
+			szDrainCmd = BASH + szCodeLoc + DRAINCMD;
 			bIsWindows = false;
 		} else if (szOS.contains("WINDOWS")) {
-			szUser     = WINUSER;
+			szWorkingDir = new File(".").getAbsolutePath();
+			szWorkingDir = szWorkingDir.charAt(szWorkingDir.length() - 1) == '.' ? szWorkingDir.substring(0, szWorkingDir.length() - 1) : szWorkingDir;
 			szSeparatr = WINSEPARATR;
-			szCodeLoc  = WINCODELOC;
+			szCodeLoc  = szWorkingDir + WINCODELOC;
 			//szCodeLoc  = "C:\\Users\\gaguigc\\Documents\\_Project\\DRAIN\\";//CGG
-			szTeststat = WINTESTSTAT;
-			szDrainCmd = WINDRAINCMD;
+			szTeststat = szWorkingDir + WINTESTSTAT;
+			szDrainCmd = szCodeLoc.replace("\\", "/");
+			szDrainCmd = BASH + szDrainCmd.substring(szDrainCmd.indexOf("/home")) + DRAINCMD;
 			bIsWindows = true;
 		}
 	} /** prepareOSSpecificVar - END */
@@ -687,6 +688,10 @@ public class JDrain extends JFrame {
 		mnFile.setMnemonic(KeyEvent.VK_F);
 		menuBar.add(mnFile);
 
+		JMenuItem mnitmInit = mnFile.add("Initialize");
+		mnitmInit.setToolTipText("Initialize test scripts used.");
+		mnitmInit.setMnemonic(KeyEvent.VK_I);
+
 		JMenuItem mnitmExit = mnFile.add("Exit");
 		mnitmExit.setMnemonic(KeyEvent.VK_X);
 
@@ -723,6 +728,33 @@ public class JDrain extends JFrame {
 		setJMenuBar(menuBar);
 
 		//add action listeners
+		mnitmInit.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if (bIsClaimedIn) {
+					tstLogs.displayErrPopUpMessage("System cannot initialize if drain process is ongoing.");
+				} else {
+					displayTxt("<html><font size=6>Initializing test scripts. Please wait.</font></html>");
+					//disable all clickables
+					textFieldWorkUnit.setEditable(false);
+					textFieldDrainSt.setEditable(false);
+					rdbtnHybrid.setEnabled(false);
+					rdbtnPrime.setEnabled(false);
+					btnEnter.setVisible(false);
+
+					if (tstLogs.displayConfirmMessage("Are you sure you want to initialize?") == JOptionPane.YES_OPTION) {
+						if (JInit.updateScripts(bIsWindows, szCodeLoc, tstLogs) == tstLogs.PASS) {
+							tstLogs.printInfo("Initialize successful.");
+							tstLogs.displayInfoPopUpMessage("Initialize successful.");
+						} else {
+							tstLogs.printErr("Failed to initialize workspace.");
+							tstLogs.displayErrPopUpMessage("Failed to initialize workspace.");
+						}
+					}
+					initDrainPanel();
+				}
+			}
+		});
+
 		mnitmExit.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				if (tstLogs.displayConfirmMessage("Are you sure you want to exit?") == JOptionPane.YES_OPTION) {
@@ -930,15 +962,13 @@ public class JDrain extends JFrame {
 		String[] aszTmp;
 		BufferedReader in = null;
 		try {
-			String szTmp = new File(".").getAbsolutePath();
-			szTmp = szTmp.charAt(szTmp.length() - 1) == '.' ? szTmp.substring(0, szTmp.length() - 1) : szTmp;
-			szTmp = szTmp + szTeststat;
-			if (!new File(szTmp).exists()) {
+			if (!new File(szTeststat).exists()) {
 				tstLogs.printErr("Missing teststat file. Claim-IN failed. Please inform ME.");
 				return tstLogs.ERROR;
 			}
 
-			in = new BufferedReader(new FileReader(szTmp));
+			in = new BufferedReader(new FileReader(szTeststat));
+			String szTmp;
 			while ((szTmp = in.readLine()) != null) {
 				//all text are based on script
 				if (szTmp.contains("(SYSTEM ") || szTmp.contains("(ORDRNUM ") || szTmp.contains("(SN ") ||
