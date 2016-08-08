@@ -1059,6 +1059,7 @@ public class JDrain extends JFrame {
 		textFieldNodeCnt.setText("");
 		textFieldProd.setVisible(true);
 		textFieldModel.setVisible(true);
+		textFieldSer.setEditable(false);
 		
 		comboProductIdList.removeAllItems();
 		comboProductIdList.setEnabled(true);
@@ -1317,7 +1318,7 @@ public class JDrain extends JFrame {
 				textFieldProd.setText("");
 				textFieldModel.setText("");
 				textFieldSer.setText("");
-				textFieldSer.setEditable(false); // hybrid needs serial number editable
+				textFieldSer.setEditable(false);
 			}
 		});
 
@@ -1390,6 +1391,7 @@ public class JDrain extends JFrame {
 					String szMfgn  = textFieldMfgn.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
 					String szOrno  = textFieldOrder.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
 					String szSerNo = textFieldSer.getText().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
+					textFieldSer.setEditable(false);
 
 					JComboItem item = (JComboItem)comboProductIdList.getSelectedItem();
 					String szProd  = item.getDesc().toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim();
