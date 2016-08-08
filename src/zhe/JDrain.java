@@ -1023,6 +1023,16 @@ public class JDrain extends JFrame {
 			return tstLogs.printErr("IOException while reading file.", ex);
 		}
 
+		//always overwrite model by performing a separate query in case it is MES order with FCSI
+		if (!bIsHybrid) {
+			JQuery qry = new JQuery(textFieldMfgn.getText(), tstLogs);
+			//get model by performing query
+			String szTmp = qry.perfModelQry(textFieldWorkUnit.getText());
+			if ((szTmp != null) && (szTmp.length() > 0)) {
+				textFieldModel.setText(szTmp);
+			}
+		}
+
 		if (textFieldMfgn.getText().isEmpty() ||
 			textFieldOrder.getText().isEmpty() ||
 			textFieldSer.getText().isEmpty() ||
@@ -1422,14 +1432,6 @@ public class JDrain extends JFrame {
 						return;
 					}
 					tstLogs.printInfo("Reapply query done.");
-	
-					//get model by performing query
-					String szTmp = qry.perfModelQry(szWorkUnitNo);
-					if (szTmp == null) {
-						
-					} else {
-						textFieldModel.setText(szTmp);
-					}
 				}
 
 				//perform login
@@ -1444,16 +1446,6 @@ public class JDrain extends JFrame {
 							   "<br><br>If error persists, please inform ME team.</center></font></html>");
 					tstLogs.displayErrPopUpMessage("Failed to claim in WU " + szWorkUnitNo.split(" ")[0] + ".\nPlease check if all info are correct.");
 					return;
-				}
-
-				//overwrite model in case it is MES order
-				if (!bIsHybrid) {
-					qry = (qry != null) ? qry : new JQuery(textFieldMfgn.getText(), tstLogs);
-					//get model by performing query
-					String szTmp = qry.perfModelQry(szWorkUnitNo);
-					if ((szTmp != null) && (szTmp.length() > 0)) {
-						textFieldModel.setText(szTmp);
-					}
 				}
 
 				//disable all clickables
