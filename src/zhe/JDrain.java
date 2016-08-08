@@ -73,7 +73,7 @@ public class JDrain extends JFrame {
 	} // panels enum - END
 	
 	/** Constants */
-	private static String VERSION = "v1.40";
+	private static String VERSION = "v1.50";
 	private static String DUMMY = "DUMMY";
 	private static Font TITLE  = new Font("Tahoma", Font.BOLD, 14);
 	private static Font TSTLBL = new Font("Tahoma", Font.PLAIN, 8);
@@ -972,7 +972,7 @@ public class JDrain extends JFrame {
 			while ((szTmp = in.readLine()) != null) {
 				//all text are based on script
 				if (szTmp.contains("(SYSTEM ") || szTmp.contains("(ORDRNUM ") || szTmp.contains("(SN ") ||
-					szTmp.contains("(PR_ID ") || szTmp.contains("(MODEL ")) {
+					szTmp.contains("(PR_ID ")) {
 					tstLogs.printDbg("Reading line " + szTmp);
 					aszTmp = szTmp.toUpperCase().replaceAll("[^A-Z0-9_ ]", "").trim().split(" ");
 					switch (aszTmp[0]) {
@@ -1005,13 +1005,6 @@ public class JDrain extends JFrame {
 							textFieldProd.setText(aszTmp[1]);
 						} else {
 							tstLogs.printErr("Cannot identify machine product line. Please inform ME.");
-						}
-						break;
-					case "MODEL":
-						if (aszTmp.length >= 2) {
-							textFieldModel.setText(aszTmp[1]);
-						} else {
-							tstLogs.printErr("Cannot identify machine model. Please inform ME.");
 						}
 						break;
 					default:
@@ -1321,9 +1314,10 @@ public class JDrain extends JFrame {
 				comboModelList.setVisible(false);
 				textFieldMfgn.setText("");
 				textFieldOrder.setText("");
-				textFieldSer.setText("");
 				textFieldProd.setText("");
 				textFieldModel.setText("");
+				textFieldSer.setText("");
+				textFieldSer.setEditable(false); // hybrid needs serial number editable
 			}
 		});
 
@@ -1341,7 +1335,8 @@ public class JDrain extends JFrame {
 				textFieldWorkUnit.setEditable(false);
 				textFieldMfgn.setText("0123456");
 				textFieldOrder.setText("123456");
-				textFieldSer.setText("12345");
+				textFieldSer.setText("");
+				textFieldSer.setEditable(true); // hybrid needs serial number editable
 
 				//for hybrid, some entries will be entered manually
 				textFieldProd.setVisible(false);
@@ -1357,6 +1352,8 @@ public class JDrain extends JFrame {
 
 		ActionListener submit = new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
+				JQuery qry = null;
+
 				initTestCasePanel();
 				tabbedPane.setSelectedIndex(0);
 				tstLogs.printInfo("=========== PROCESS START ===========");
@@ -1404,6 +1401,33 @@ public class JDrain extends JFrame {
 						return;
 					}
 					szWorkUnitNo = szWorkUnitNo + " " + szProd + " " + szModel + " " + szSerNo + " " + szOrno + " " + szMfgn;
+				} else {
+					//check if order is a reapply
+					qry = new JQuery(textFieldMfgn.getText(), tstLogs);
+					tstLogs.printInfo("Performing reapply query.");
+					if (qry.perfReapplyQry() != tstLogs.PASS) {
+						String szMsg = "Failed to perform query on QRYPROD. Please inform ME!";
+						displayTxt(szMsg);
+						tstLogs.printErr(szMsg);
+						tstLogs.displayErrPopUpMessage(szMsg);
+						return;
+					} else if (qry.isReapply()) {
+						String szMsg = "There are components detected for pending removal at OP 0807. Please route MFS back to op 0807 to process the removal.";
+						displayTxt(szMsg);
+						tstLogs.printErr(szMsg);
+						tstLogs.displayErrPopUpMessage("There are components detected for pending removal at OP 0807.\n"
+								+ "Please log in to MFS client and process the removal first. Once done, return to this application.");
+						return;
+					}
+					tstLogs.printInfo("Reapply query done.");
+	
+					//get model by performing query
+					String szTmp = qry.perfModelQry(szWorkUnitNo);
+					if (szTmp == null) {
+						
+					} else {
+						textFieldModel.setText(szTmp);
+					}
 				}
 
 				//perform login
@@ -1420,26 +1444,15 @@ public class JDrain extends JFrame {
 					return;
 				}
 
-				//check if order is a reapply
-				JQuery qry = new JQuery(textFieldMfgn.getText(), tstLogs);
-				tstLogs.printInfo("Performing reapply query.");
-				if (qry.perfReapplyQry() != tstLogs.PASS) {
-					String szMsg = "Failed to perform query on QRYPROD. Please inform ME!";
-					displayTxt(szMsg);
-					tstLogs.printErr(szMsg);
-					tstLogs.displayErrPopUpMessage(szMsg);
-					performSuspend();
-					return;
-				} else if (qry.isReapply()) {
-					String szMsg = "There are components detected for pending removal at OP 0807. Please route MFS back to op 0807 to process the removal.";
-					displayTxt(szMsg);
-					tstLogs.printErr(szMsg);
-					tstLogs.displayErrPopUpMessage("There are components detected for pending removal at OP 0807.\n"
-							+ "Please log in to MFS client and process the removal first. Once done, return to this application.");
-					performSuspend();
-					return;
+				//overwrite model in case it is MES order
+				if (!bIsHybrid) {
+					qry = (qry != null) ? qry : new JQuery(textFieldMfgn.getText(), tstLogs);
+					//get model by performing query
+					String szTmp = qry.perfModelQry(szWorkUnitNo);
+					if ((szTmp != null) && (szTmp.length() > 0)) {
+						textFieldModel.setText(szTmp);
+					}
 				}
-				tstLogs.printInfo("Reapply query done.");
 
 				//disable all clickables
 				textFieldWorkUnit.setEditable(false);

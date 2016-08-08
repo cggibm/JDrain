@@ -70,6 +70,46 @@ public class JQuery {
 		return log.PASS;
 	} /** perfReapplyQry - END */
 
+    /** Gets the model from MFS
+     *  Added since MES order returns the old model so just query the model from OR10 table and ovewrite the read data
+     *  Input : szWorkUnit - WU to check
+     *  Output: machine model
+     **/
+	public String perfModelQry(String szWorkUnit) {
+		String connectionPassword = getPassword();
+		if ((connectionPassword == null) || (connectionPassword.isEmpty())) {
+			log.printErr("Cannot connect to QRYPROD. Please inform ME!");
+			return null;
+		}
+
+		Connection conn = null;
+		Statement stmt = null;
+		ResultSet rs = null;
+		String szModel = "";
+		try {
+			Class.forName("com.ibm.as400.access.AS400JDBCDriver").newInstance();
+			String connectionUrl = "jdbc:as400://QRYPROD.RCHLAND.IBM.COM;libraries=QRYPROD;";
+			String connectionUser = USER;
+			conn = DriverManager.getConnection(connectionUrl, connectionUser, connectionPassword);
+			stmt = conn.createStatement();
+			rs = stmt.executeQuery("SELECT A.ORMMDL " +
+			                       "FROM MFS2P010A.FCSPOR10 A, MFS2P010A.FCSPWU10 B " +
+					               "WHERE (A.ORIDSS = B.WUIDSS and A.ORMFGN = B.WUMFGN) AND A.ORORNO NOT LIKE '4%' AND B.WUMCTL = '" + szWorkUnit + "'");
+			if ((rs != null) && (rs.next())) {
+				szModel = rs.getString("ORMMDL");
+			}
+		} catch (Exception ex) {
+			log.printErr("Exception encountered while performing query. Please inform ME!", ex);
+		} finally {
+			try { if (rs   != null) rs.close();   } catch (SQLException e) { e.printStackTrace(); }
+			try { if (stmt != null) stmt.close(); } catch (SQLException e) { e.printStackTrace(); }
+			try { if (conn != null) conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		log.printDbg("Query model = " + szModel + ".");
+		return szModel.trim();
+	} /** perfModelQry - END */
+
     /** Checks if given MFGN is a reapply
      *  Output: true  - reapply
      *          false - otherwise

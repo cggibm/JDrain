@@ -14,5 +14,6 @@
 			<attribute name="owner.project.facets" value="java"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/gaguigc/Documents/_Project/DRAIN/driver/RXTXcomm.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
